@@ -5,6 +5,8 @@ CXXFLAGS    = -std=c++14 -g -Wall -mavx -mtune=native -O3 -funroll-loops -flax-v
 # -Winline -fcilkplus 
 # -Wall -Wno-missing-braces -Wno-unused-variable  -Wno-attributes
 
+LDLIBS = -lbenchmark -lpthread -lrt
+
 TARGET = cycle sort inverse essai
 all: $(TARGET)
 
@@ -20,6 +22,8 @@ cycle: cycle.o perm16.o testtools.o
 sort: sort.o perm16.o testtools.o
 inverse: inverse.o perm16.o testtools.o
 essai: essai.o perm16.o testtools.o
+
+invbench: invbench.cpp perm16.o
 
 clean:
 	rm -rf $(TARGET) *.o
