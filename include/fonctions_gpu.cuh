@@ -7,6 +7,7 @@
 	#include <cuda_runtime.h>
 	template <typename T>
 	void shufl_gpu(T* __restrict__ x, const T* __restrict__ y, const size_t size, float * timers);
+	uint64_t hash_gpu(const uint32_t* __restrict__ x, uint64_t hashed, const size_t size);
 
 	// GPU error catching
 	#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }

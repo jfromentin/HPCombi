@@ -98,4 +98,21 @@ void shufl_gpu(T* __restrict__ x, const T* __restrict__ y, const size_t size, fl
 }
 
 
+
+
+uint64_t hash_gpu(const uint32_t* __restrict__ x, uint64_t hashed, const size_t size) {
+	cudaSetDevice(0);
+	uint32_t* d_x;
+	uint64_t d_hashed;
+	gpuErrchk( cudaMalloc((void**)&d_x, size*sizeof(uint32_t)) );
+
+	gpuErrchk( cudaMemcpy(d_x, x, size*sizeof(uint32_t), cudaMemcpyHostToDevice) );
+	dim3 block(512,1);
+	dim3 grid((1+block.x-1)/block.x,1);
+		hash_kernel<<<grid, block>>>(d_x, &d_hashed, size);
+	gpuErrchk( cudaMemcpy(&hashed, &d_hashed, sizeof(uint64_t), cudaMemcpyDeviceToHost) );
+
+	
+	return hashed;
+}
 #endif  // HPCOMBI_PERM_FONCTIONS_GPU_IMPL_CUH
