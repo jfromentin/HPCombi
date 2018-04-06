@@ -36,3 +36,4 @@
 
 TAGS
 build
+!build/example/outdata/*.data
