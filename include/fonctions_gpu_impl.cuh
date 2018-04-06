@@ -19,7 +19,8 @@ template void shufl_gpu<uint16_t>(uint16_t* x, const uint16_t* y, const size_t s
 template void shufl_gpu<uint32_t>(uint32_t* x, const uint32_t* y, const size_t size, float * timers);
 
 // Allocating memory
-MemGpu memGpu(131072);
+//~ MemGpu memGpu(131072);
+MemGpu memGpu(32);
 
 template <typename T>
 void shufl_gpu(T* __restrict__ x, const T* __restrict__ y, const size_t size, float * timers)
@@ -100,19 +101,25 @@ void shufl_gpu(T* __restrict__ x, const T* __restrict__ y, const size_t size, fl
 
 
 
-uint64_t hash_gpu(const uint32_t* __restrict__ x, uint64_t hashed, const size_t size) {
+void hash_gpu(const uint32_t* __restrict__ x, const int block_size, uint64_t* hashed, const size_t size, const size_t nb_vect) {
 	cudaSetDevice(0);
 	uint32_t* d_x;
-	uint64_t d_hashed;
-	gpuErrchk( cudaMalloc((void**)&d_x, size*sizeof(uint32_t)) );
-
-	gpuErrchk( cudaMemcpy(d_x, x, size*sizeof(uint32_t), cudaMemcpyHostToDevice) );
-	dim3 block(512,1);
-	dim3 grid((1+block.x-1)/block.x,1);
-		hash_kernel<<<grid, block>>>(d_x, &d_hashed, size);
-	gpuErrchk( cudaMemcpy(&hashed, &d_hashed, sizeof(uint64_t), cudaMemcpyDeviceToHost) );
-
+	uint64_t* d_hashed;
 	
-	return hashed;
+	gpuErrchk( cudaMalloc((void**)&d_x, size * nb_vect * sizeof(uint32_t)) );
+	gpuErrchk( cudaMalloc((void**)&d_hashed, nb_vect * sizeof(uint64_t)) );
+
+	gpuErrchk( cudaMemcpy(d_x, x, size * nb_vect * sizeof(uint32_t), cudaMemcpyHostToDevice) );
+	dim3 block(block_size,1);
+	//~ dim3 grid((1+block.x-1)/block.x,1);
+	dim3 grid(nb_vect,1);
+		hpcombi<<<grid, block>>>(d_x, d_hashed, size, nb_vect);
+	gpuErrchk( cudaPeekAtLastError() );
+	//~ gpuErrchk( cudaDeviceSynchronize() );
+	gpuErrchk( cudaMemcpy(hashed, d_hashed, nb_vect * sizeof(uint64_t), cudaMemcpyDeviceToHost) );
+
+	cudaFree(d_x);
+	cudaFree(d_hashed);
+
 }
 #endif  // HPCOMBI_PERM_FONCTIONS_GPU_IMPL_CUH

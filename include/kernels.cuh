@@ -9,7 +9,8 @@ __global__ void permute_gpu (T * __restrict__ d_x, T * __restrict__ d_y, const s
 template <typename T>
 __global__ void permute_gpu_gen (T * __restrict__ d_x, T * __restrict__ d_y, const size_t size);
 
-__global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size);
+__global__ void hpcombi(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect);
+__device__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect);
 
 
 
@@ -67,44 +68,41 @@ __global__ void permute_gpu_gen (T * __restrict__ d_x, T * __restrict__ d_y, con
   }
 }
 
-#define NB_COEF 2
+__global__ void hpcombi(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect){
+	hash_kernel(d_x, d_hashed, size, nb_vect);	
+}
 
-__global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size) {
-  const size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
+__device__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect) {
+  //~ const size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
   const size_t wid = threadIdx.x / warpSize;
   const size_t lane = threadIdx.x % warpSize;
-  const size_t offset = blockDim.x * gridDim.x;
+  const size_t offset = blockDim.x;
   const size_t coefPerThread = (size+blockDim.x-1) / blockDim.x;
   static __shared__ uint64_t shared[32];
   const uint64_t prime = 0x9e3779b97f4a7bb9;
-  uint64_t tmp1=1;
-  uint64_t tmp2=1;
+  uint64_t tmp=1;
   uint64_t out=0;
   uint64_t coef=0;
 
   if (wid == 0)
     shared[lane] = 0;
     
-  for (size_t j=0; j<tid; j++)
-    tmp1 *= prime;
-   //~ tmp1 = __mul64hi(tmp1, prime);
-    
-  tmp2 = tmp1;
-  for(size_t i=0; i<coefPerThread; i++){
-    if(tid + offset * i < size)
-      coef = d_x[tid + offset * i];           
+  for (int j=0; j<threadIdx.x; j++)
+    tmp *= prime;
 
-    for (size_t j=0; j<offset; j++)
-      tmp2 *= prime;
-      //~ tmp2 = __mul64hi(tmp2, prime);
+  for(int i=0; i<coefPerThread; i++){
+    if(threadIdx.x + offset * i < size)
+      coef = d_x[blockIdx.x * size + threadIdx.x + offset * i];
 
-    out += coef*tmp1;
-    tmp1 = tmp2;
+    out += coef*tmp;
+    for (int j=0; j<offset; j++)
+      tmp *= prime;
+
     coef = 0;
     }
 
   // Reduction
-  for (size_t offset = warpSize/2; offset > 0; offset /= 2) 
+  for (int offset = warpSize/2; offset > 0; offset /= 2) 
       out += __shfl_down(out, offset);
 
   if(blockDim.x > 32){
@@ -115,16 +113,14 @@ __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, cons
     
     if (wid == 0) {
       out = shared[lane];     
-      for (size_t offset = warpSize/2; offset > 0; offset /= 2) 
+      for (int offset = warpSize/2; offset > 0; offset /= 2) 
           out += __shfl_down(out, offset);
     }
   }
 
-	//~ ((v1 * prime + v0) * prime) >> 64;
-  //~ long long int 	__mul64hi ( long long int x, long long int y )
 	
-  if(tid == 0)
-    *d_hashed = out;
+  if(threadIdx.x == 0)
+    d_hashed[blockIdx.x] = out;
 	
 	
 }
