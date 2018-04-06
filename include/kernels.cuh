@@ -10,7 +10,8 @@ template <typename T>
 __global__ void permute_gpu_gen (T * __restrict__ d_x, T * __restrict__ d_y, const size_t size);
 
 __global__ void hpcombi(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect);
-__device__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect);
+__device__ void hash_kernel1(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect);
+__device__ void hash_kernel2(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect);
 
 
 
@@ -69,14 +70,14 @@ __global__ void permute_gpu_gen (T * __restrict__ d_x, T * __restrict__ d_y, con
 }
 
 __global__ void hpcombi(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect){
-	hash_kernel(d_x, d_hashed, size, nb_vect);	
+	hash_kernel2(d_x, d_hashed, size, nb_vect);	
 }
 
-__device__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect) {
+__device__ void hash_kernel1(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect) {
   //~ const size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
   const size_t wid = threadIdx.x / warpSize;
   const size_t lane = threadIdx.x % warpSize;
-  const size_t offset = blockDim.x;
+  const size_t offset_global = blockDim.x;
   const size_t coefPerThread = (size+blockDim.x-1) / blockDim.x;
   static __shared__ uint64_t shared[32];
   const uint64_t prime = 0x9e3779b97f4a7bb9;
@@ -91,11 +92,11 @@ __device__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, cons
     tmp *= prime;
 
   for(int i=0; i<coefPerThread; i++){
-    if(threadIdx.x + offset * i < size)
-      coef = d_x[blockIdx.x * size + threadIdx.x + offset * i];
+    if(threadIdx.x + offset_global * i < size && blockIdx.x < nb_vect)
+      coef = d_x[blockIdx.x * size + threadIdx.x + offset_global * i];
 
     out += coef*tmp;
-    for (int j=0; j<offset; j++)
+    for (int j=0; j<offset_global; j++)
       tmp *= prime;
 
     coef = 0;
@@ -116,12 +117,58 @@ __device__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, cons
       for (int offset = warpSize/2; offset > 0; offset /= 2) 
           out += __shfl_down(out, offset);
     }
-  }
-
-	
+  }	
   if(threadIdx.x == 0)
     d_hashed[blockIdx.x] = out;
-	
-	
+}
+
+__device__ void hash_kernel2(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const size_t size, const size_t nb_vect) {
+  //~ const size_t tidx = blockIdx.x * blockDim.x + threadIdx.x;
+  const size_t tidy = blockIdx.y * blockDim.y + threadIdx.y;
+  //~ const size_t wid = threadIdx.x / warpSize;
+  const size_t lane = threadIdx.x % warpSize;
+  const size_t offset_global = warpSize;
+  const size_t coefPerThread = (size+warpSize-1) / warpSize;
+  //~ static __shared__ uint64_t shared[32];
+  const uint64_t prime = 0x9e3779b97f4a7bb9;
+  uint64_t tmp=1;
+  uint64_t out=0;
+  uint64_t coef=0;
+
+  //~ if (wid == 0)
+    //~ shared[lane] = 0;
+    
+  for (int j=0; j<lane; j++)
+    tmp *= prime;
+
+  for(int i=0; i<coefPerThread; i++){
+    if(lane + offset_global * i < size && tidy < nb_vect)
+      coef = d_x[tidy * size + lane + offset_global * i];
+
+    out += coef*tmp;
+    for (int j=0; j<offset_global; j++)
+      tmp *= prime;
+
+    coef = 0;
+    }
+
+  // Reduction
+  for (int offset = warpSize/2; offset > 0; offset /= 2) 
+      out += __shfl_down(out, offset);
+
+  //~ if(blockDim.x > 32){
+    //~ if (lane == 0)
+      //~ shared[wid] = out;
+      
+    //~ __syncthreads();
+    
+    //~ if (wid == 0) {
+      //~ out = shared[lane];     
+      //~ for (int offset = warpSize/2; offset > 0; offset /= 2) 
+          //~ out += __shfl_down(out, offset);
+    //~ }
+  //~ }	
+  if(lane == 0)
+    d_hashed[tidy] = out;
 }
 #endif  // HPCOMBI_PERM_KERNELS_CUH

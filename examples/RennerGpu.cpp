@@ -43,6 +43,23 @@ google::dense_hash_map<PTransf16, std::pair<PTransf16, int>,
 unordered_map<PTransf16, std::pair<PTransf16, int>> elems;
 #endif
 
+void hash_cpu(const uint32_t* __restrict__ x, uint64_t* hashed, const size_t size, const size_t nb_vect) {
+  const uint64_t prime = 0x9e3779b97f4a7bb9;
+  uint64_t tmp;
+  __int128 v0;
+  __int128 v1;
+  for(int k=0; k<nb_vect; k++){
+    tmp=x[k*size];
+    for(int i=1; i<size; i++){
+      v0 = (__int128)x[i + k*size];
+      v1 = (__int128)tmp;
+      tmp += ((v1 * prime + v0) * prime) >> 64;
+    }
+    hashed[k] = tmp;
+  }
+}
+
+
 
 int main() {
   //~ int lg = 0;
@@ -57,8 +74,10 @@ int main() {
   int vect_start = 1;
   int vect_end = 10000;
   int vect_nb = 200;
+  int coefPerThread;
+  int kernel_num = 2;
   
-  int kernel_num = 1;
+  double timeGpu, timeCpu; 
   
   string file_name = to_string(size_end) + to_string(size_nb) + to_string(vect_end) + to_string(vect_nb) + to_string(nb_hash) + to_string(kernel_num);
   
@@ -66,7 +85,7 @@ int main() {
     printf("nb_vect : %d\n", nb_vect);
 
     for(size = size_start; size<size_end; size = ceil(size *pow(size_end/size_start, 1./size_nb))){
-      //~ printf("size : %d\n", size);
+      printf("size : %d\n", size);
       uint32_t* gen = (uint32_t*)malloc(size * nb_vect * sizeof(uint32_t));    
       uint64_t* hashed = (uint64_t*)malloc(nb_vect * sizeof(uint64_t));     
        
@@ -74,22 +93,37 @@ int main() {
         for(int j=0; j<size; j++)
           gen[i*size + j] = (uint32_t)(j+i);  
   
-      for(block_size = 32; block_size<=256; block_size*=2){
-        for(int k=0; k<1; k++){
-          auto tstart = high_resolution_clock::now();
-            for(int j=0; j<nb_hash; j++)
-              hash_gpu(gen, block_size, hashed, size, nb_vect);
-          auto tfin = high_resolution_clock::now();
-          auto tm = duration_cast<duration<double>>(tfin - tstart);
-          double time = tm.count()/nb_hash*1e6;
-          int coefPerThread = (size+block_size-1) / block_size;
-          //~ for(int i=0; i<nb_vect; i++)
-            //~ printf("Hash : %lu, index : %lu\n", hashed[i], hashed[i]%100000);
-          //~ printf("coefPerThread : %d, nb vect : %d\n", coefPerThread, nb_vect);
-          //~ printf("Block size : %d, size : %lu, time : %.3f us, time/vect : %.3f us\n", block_size, size, time, time/nb_vect);
-          
-          write_hash(block_size, size, nb_vect, hashed, time, file_name);
-        }
+      for(block_size = 4; block_size<=5; block_size*=2){
+        // GPU ############################
+        auto tstartGpu = high_resolution_clock::now();
+          for(int j=0; j<nb_hash; j++)
+            hash_gpu(gen, block_size, hashed, size, nb_vect);
+        auto tfinGpu = high_resolution_clock::now();
+        auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
+        timeGpu = tmGpu.count()/nb_hash*1e6;
+        for(int i=0; i<nb_vect; i++)
+          //~ printf("Hash GPU : %lu, index : %lu\n", hashed[i], hashed[i]%100000);
+        // CPU ############################
+        //~ auto tstartCpu = high_resolution_clock::now();
+          //~ for(int j=0; j<nb_hash; j++)
+            //~ hash_cpu(gen, hashed, size, nb_vect);
+        //~ auto tfinCpu = high_resolution_clock::now();
+        //~ auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+        //~ timeCpu = tmCpu.count()/nb_hash*1e6;
+        //~ for(int i=0; i<nb_vect; i++)
+          //~ printf("Hash CPU : %lu, index : %lu\n", hashed[i], hashed[i]%100000);
+         
+        if(kernel_num == 1)
+          coefPerThread = (size+block_size-1) / block_size;
+        else if(kernel_num == 2)
+          coefPerThread = (size+32-1) / 32;
+        //~ printf("coefPerThread : %d, nb vect : %d\n", coefPerThread, nb_vect);
+        //~ printf("Speedup : %f\n", timeCpu/timeGpu);
+        //~ printf("Block size : %d, size : %lu, time : %.3f us, time/vect : %.3f us\n", block_size, size, timeGpu, timeGpu/nb_vect);
+        //~ printf("Block size : , size : %lu, time : %.3f us, time/vect : %.3f us\n", size, timeCpu, timeCpu/nb_vect);
+        
+        //~ write_hash(block_size, size, nb_vect, hashed, timeGPU, file_name);
+        write_hash(1, size, nb_vect, hashed, timeCpu, file_name);
       }
       //~ printf("\n");
   
@@ -97,5 +131,6 @@ int main() {
       free(hashed);
     }
   }
+  printf("end\n");
 
 }

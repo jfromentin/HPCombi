@@ -110,12 +110,13 @@ void hash_gpu(const uint32_t* __restrict__ x, const int block_size, uint64_t* ha
 	gpuErrchk( cudaMalloc((void**)&d_hashed, nb_vect * sizeof(uint64_t)) );
 
 	gpuErrchk( cudaMemcpy(d_x, x, size * nb_vect * sizeof(uint32_t), cudaMemcpyHostToDevice) );
-	dim3 block(block_size,1);
-	//~ dim3 grid((1+block.x-1)/block.x,1);
-	dim3 grid(nb_vect,1);
+	//~ dim3 block(block_size,1);
+	//~ dim3 grid(nb_vect,1);
+	dim3 block(32, block_size);
+	dim3 grid(1,(nb_vect + block_size-1)/block_size);
 		hpcombi<<<grid, block>>>(d_x, d_hashed, size, nb_vect);
+	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
-	//~ gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaMemcpy(hashed, d_hashed, nb_vect * sizeof(uint64_t), cudaMemcpyDeviceToHost) );
 
 	cudaFree(d_x);
