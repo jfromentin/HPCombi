@@ -75,7 +75,7 @@ int main() {
   int vect_end = 10000;
   int vect_nb = 200;
   int coefPerThread;
-  int kernel_num = 2;
+  int kernel_num = 3;
   
   double timeGpu, timeCpu; 
   
@@ -95,23 +95,23 @@ int main() {
   
       for(block_size = 4; block_size<=5; block_size*=2){
         // GPU ############################
-        auto tstartGpu = high_resolution_clock::now();
-          for(int j=0; j<nb_hash; j++)
-            hash_gpu(gen, block_size, hashed, size, nb_vect);
-        auto tfinGpu = high_resolution_clock::now();
-        auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
-        timeGpu = tmGpu.count()/nb_hash*1e6;
-        for(int i=0; i<nb_vect; i++)
+        //~ auto tstartGpu = high_resolution_clock::now();
+          //~ for(int j=0; j<nb_hash; j++)
+            //~ hash_gpu(gen, block_size, hashed, size, nb_vect);
+        //~ auto tfinGpu = high_resolution_clock::now();
+        //~ auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
+        //~ timeGpu = tmGpu.count()/nb_hash*1e6;
+        //~ for(int i=0; i<nb_vect; i++)
           //~ printf("Hash GPU : %lu, index : %lu\n", hashed[i], hashed[i]%100000);
         // CPU ############################
-        //~ auto tstartCpu = high_resolution_clock::now();
-          //~ for(int j=0; j<nb_hash; j++)
-            //~ hash_cpu(gen, hashed, size, nb_vect);
-        //~ auto tfinCpu = high_resolution_clock::now();
-        //~ auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
-        //~ timeCpu = tmCpu.count()/nb_hash*1e6;
-        //~ for(int i=0; i<nb_vect; i++)
-          //~ printf("Hash CPU : %lu, index : %lu\n", hashed[i], hashed[i]%100000);
+        auto tstartCpu = high_resolution_clock::now();
+          for(int j=0; j<nb_hash; j++)
+            hash_cpu(gen, hashed, size, nb_vect);
+        auto tfinCpu = high_resolution_clock::now();
+        auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+        timeCpu = tmCpu.count()/nb_hash*1e6;
+        for(int i=0; i<nb_vect; i++)
+          printf("Hash CPU : %lu, index : %lu\n", hashed[i], hashed[i]%100000);
          
         if(kernel_num == 1)
           coefPerThread = (size+block_size-1) / block_size;
