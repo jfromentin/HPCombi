@@ -141,21 +141,32 @@ void hash_cpu(const uint32_t* __restrict__ x, uint64_t* hashed, const int size, 
 
 void print_word(std::array<int, NODE> word);
 
+struct result
+{
+uint64_t hashed;
+std::array<int, NODE> word;
+uint32_t* d_gen;
+int block_size;
+int size;
+int size_word;
+int nb_gen;
+};
+
 
 struct eqstr
 {
-  bool operator()(const std::pair<uint64_t, std::array<int, NODE>> pair1, const std::pair<uint64_t, std::array<int, NODE>> pair2) const
+  bool operator()(const result result1, result result2) const
   {
-    return pair1.first == pair2.first;
-    //~ return equal_gpu(&(pair1.second[0]), &(pair2.second[0]), d_gen, block_size, size, size_word, nb_gen);
+    //~ return result1.hashed == result2.hashed;
+    return equal_gpu(&(result1.word[0]), &(result2.word[0]), result1.d_gen, result1.block_size, result1.size, result1.size_word, result1.nb_gen);
   }
 };
 
 struct hash_gpu_class
 {
-  bool operator()(const std::pair<uint64_t, std::array<int, NODE>> pair) const
+  bool operator()(const result result1) const
   {
-    return pair.first%HASH_SIZE;
+    return result1.hashed%HASH_SIZE;
   }
 };
 
@@ -164,10 +175,10 @@ int main() {
   using namespace std::chrono;
   const int size = 16;
   int block_size = 4;
-  const int nb_gen = 4;
+  const int nb_gen = 2;
   //~ const int node = 50;
 
-  google::dense_hash_map< std::pair< uint64_t, std::array<int, NODE> >, std::array<int, NODE>, hash_gpu_class, eqstr> elems;
+  google::dense_hash_map< result, std::array<int, NODE>, hash_gpu_class, eqstr> elems;
 
   uint32_t* gen = (uint32_t*)malloc(size*nb_gen * sizeof(uint32_t));
   for(int i=0; i<size*nb_gen; i++){
@@ -177,10 +188,10 @@ int main() {
   gen[10] = 9;
   gen[size + 10] = 11;
   gen[size + 11] = 10;
-  gen[2*size + 3] = 4;
-  gen[2*size + 4] = 3;
-  gen[3*size + 2] = 3;
-  gen[3*size + 3] = 2;
+  //~ gen[2*size + 3] = 4;
+  //~ gen[2*size + 4] = 3;
+  //~ gen[3*size + 2] = 3;
+  //~ gen[3*size + 3] = 2;
   //~ gen[4*size + 1] = 2;
   //~ gen[4*size + 2] = 1;
   uint32_t* d_gen;
@@ -189,15 +200,26 @@ int main() {
 
 
   vector< std::array<int, NODE> > todo, newtodo;
-  std::array<int, NODE> id_word;
-  id_word.fill(-1);
-  todo.push_back(id_word);
-
-  elems.set_empty_key(std::make_pair (-1, id_word));
+  //~ std::array<int, NODE> id_word;
+  result id_word;
 
   uint64_t hashedId;
-  hash_id_gpu(&hashedId, block_size, size);  
-  elems.insert({ {hashedId, id_word}, id_word});
+  hash_id_gpu(&hashedId, block_size, size);
+  
+	id_word.hashed = hashedId;
+	id_word.word.fill(-1);
+	id_word.d_gen = d_gen;
+	id_word.block_size = block_size;
+	id_word.size = size;
+	id_word.size_word = NODE;
+	id_word.nb_gen = nb_gen;
+
+  //~ id_word.fill(-1);
+  todo.push_back(id_word.word);
+
+  elems.set_empty_key(id_word);
+
+  elems.insert({ id_word, id_word.word});
   
   
   for(int i=0; i<NODE; i++){
@@ -209,7 +231,17 @@ int main() {
       std::array<int, NODE> newWord = todo[j/nb_gen];        
       newWord[i] = gen[j%nb_gen];
       //~ print_word(newWord);
-      if(elems.insert({ {hashed[j], newWord}, newWord}).second){
+        result newResult;
+
+        newResult.hashed = hashed[j];
+        newResult.word = newWord;
+        newResult.d_gen = d_gen;
+        newResult.block_size = block_size;
+        newResult.size = size;
+        newResult.size_word = NODE;
+        newResult.nb_gen = nb_gen;
+  
+      if(elems.insert({ newResult, newWord}).second){
         newtodo.push_back(newWord);
       //~ cout << "new   " << j << "  " << hashed[j]%HASH_SIZE << endl;
       }
