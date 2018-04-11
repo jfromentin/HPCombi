@@ -66,7 +66,8 @@ const PTransf16 gene {FF,FF,FF,FF,FF,FF,FF,FF, 8, 9,10,11,12,13,14,15};
 const PTransf16 genf {FF,FF,FF,FF,FF,FF,FF, 7,FF, 9,10,11,12,13,14,15};
 
 // const vector<PTransf16> gens {gene, genf, s1e, s1f};
-const vector<PTransf16> gens{gene, genf, s1e, s1f, s2, s3, s4, s5};
+//~ const vector<PTransf16> gens{gene, genf, s1e, s1f, s2, s3};
+const vector<PTransf16> gens{s2, s3, s4, s5};
 const int nprint = 6;
 
 
@@ -146,8 +147,8 @@ int main() {
           newtodo.push_back(el);
           if (mult0(el, el) == el) {
             nidemp++;
-            cout << "Idemp : " << setw(3) << nidemp << " "
-                 << sym_renner(el, nprint) << " " << reduced_word(el) << endl;
+            //~ cout << "Idemp : " << setw(3) << nidemp << " "
+                 //~ << sym_renner(el, nprint) << " " << reduced_word(el) << endl;
           }
         }
       }

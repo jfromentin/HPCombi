@@ -1,7 +1,7 @@
 #ifndef HPCOMBI_IOTOOLS_HPP_INCLUDED
 #include <iotools.hpp>
 
-void write_hash(int block_size,  const size_t size, const size_t nb_vect, uint64_t* hashed, double time, std::string file_name){
+void write_hash(int block_size,  const int size, const int nb_vect, uint64_t* hashed, double time, std::string file_name){
 	file_name = "examples/outData/" + file_name + ".data";
 	//~ file_name = "examples/outData/test.data";
 

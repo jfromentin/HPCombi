@@ -385,7 +385,18 @@ template <> struct hash<HPCombi::Vect16> {
     __int128 v0 = _mm_extract_epi64(ar.v, 0);
     __int128 v1 = _mm_extract_epi64(ar.v, 1);
     return ((v1 * HPCombi::prime + v0) * HPCombi::prime) >> 64;
-
+    
+	//~ int nb_vect = 1;
+	//~ int size = 4;
+	//~ uint64_t hashed;
+	//~ uint32_t* gen = (uint32_t*)malloc(size * nb_vect * sizeof(uint32_t));
+	//~ for(int i=0; i<size; i++)
+		//~ gen[i] = _mm_extract_epi32(ar.v, i);    
+	//~ hash_gpu(gen, 4, &hashed, size, nb_vect, 3);
+	//~ free(gen);
+	//~ return hashed;
+	
+	
     /* The following is extremely slow on Renner benchmark
     uint64_t v0 = _mm_extract_epi64(ar.v, 0);
     uint64_t v1 = _mm_extract_epi64(ar.v, 1);
