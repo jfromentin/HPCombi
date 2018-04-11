@@ -1,13 +1,21 @@
 #ifndef HPCOMBI_PERM_FONCTIONS_GPU_CUH
 #define HPCOMBI_PERM_FONCTIONS_GPU_CUH
 #if COMPILE_CUDA==1
+
 	//~ #include <cuda.h>
 	//~ #include <helper_cuda.h>
 	//~ #include <helper_functions.h>
 	#include <cuda_runtime.h>
 	template <typename T>
 	void shufl_gpu(T* __restrict__ x, const T* __restrict__ y, const size_t size, float * timers);
-	void hash_gpu(const uint32_t* __restrict__ x, const int block_size, uint64_t* hashed, const size_t size, const size_t nb_vect);
+	void hash_gpu(const uint32_t* __restrict__ x, const int block_size, uint64_t* hashed, const int size, const int nb_vect, int kernel_num);
+	void hpcombi_gpu(const int* __restrict__ words, const uint32_t* __restrict__ d_gen, uint64_t* hashed, 
+				int block_size, const int size, const int size_word, const int nb_words, const int nb_gen);
+	void hash_id_gpu(uint64_t* hashed, int block_size, const int size);
+	bool equal_gpu(const int* __restrict__ word1, const int* __restrict__ word2, const uint32_t* __restrict__ d_gen, 
+				int block_size, const int size, const int size_word, const int nb_gen);
+	void malloc_gen(uint32_t** __restrict__ d_gen, const uint32_t* __restrict__ gen, const int size, const int number);
+	void free_gen(uint32_t** __restrict__ d_gen);
 
 	// GPU error catching
 	#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
