@@ -28,6 +28,7 @@
 #include <unordered_map>
 #endif
 #include <x86intrin.h>
+#include <chrono>
 
 template <typename T>
 std::ostream &operator<<(std::ostream &out, const std::vector<T> &v) {
@@ -42,9 +43,15 @@ std::ostream &operator<<(std::ostream &out, const std::vector<T> &v) {
   return out;
 }
 
+
+
 using namespace std;
 using namespace HPCombi;
+using namespace std::chrono;
 
+void print_word(google::dense_hash_map<PTransf16, std::pair<PTransf16, int>,
+                       hash<PTransf16>, equal_to<PTransf16>> elems, PTransf16 el);
+                       
 const PTransf16 id  {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15};
 
 const PTransf16 s0  {0, 1, 2, 3, 4, 5, 6, 8, 7, 9,10,11,12,13,14,15};
@@ -67,13 +74,13 @@ const PTransf16 genf {FF,FF,FF,FF,FF,FF,FF, 7,FF, 9,10,11,12,13,14,15};
 
 // const vector<PTransf16> gens {gene, genf, s1e, s1f};
 //~ const vector<PTransf16> gens{gene, genf, s1e, s1f, s2, s3};
-const vector<PTransf16> gens{s2, s3};
+const vector<PTransf16> gens{s2, s3, s4, s5, s6, s7};
 const int nprint = 6;
 
 
 #ifdef HPCOMBI_HAVE_DENSEHASHMAP
 google::dense_hash_map<PTransf16, std::pair<PTransf16, int>,
-                       hash<PTransf16>, equal_to<PTransf16>> elems;
+                       hash<PTransf16>, equal_to<PTransf16>> elems(1000);
 #else
 unordered_map<PTransf16, std::pair<PTransf16, int>> elems;
 #endif
@@ -137,6 +144,11 @@ int main() {
 
   vector<PTransf16> todo, newtodo;
   todo.push_back(id);
+  
+
+double timeCpu;  
+auto tstartCpu = high_resolution_clock::now(); 
+  
   while (todo.size()) {
     newtodo.clear();
     lg++;
@@ -145,6 +157,7 @@ int main() {
         PTransf16 el = act0(v, gens[i]);
         if (elems.insert({el, {v, i}}).second) {
           newtodo.push_back(el);
+          //~ print_word(elems, el);
           if (mult0(el, el) == el) {
             nidemp++;
             //~ cout << "Idemp : " << setw(3) << nidemp << " "
@@ -157,6 +170,31 @@ int main() {
     cout << lg << ", todo = " << todo.size() << ", elems = " << elems.size()
          << ", #Bucks = " << elems.bucket_count() << endl;
   }
+  
+  auto tfinCpu = high_resolution_clock::now();
+  auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+  timeCpu = tmCpu.count()*1e3;
+  printf("Time CPU : %.3fms\n", timeCpu);  
+
   cout << "elems =  " << elems.size() << endl;
   exit(0);
+}
+
+void print_word(google::dense_hash_map<PTransf16, std::pair<PTransf16, int>,
+                       hash<PTransf16>, equal_to<PTransf16>> elems, PTransf16 el){
+	int i=0;
+	vector<uint8_t> word;
+	i=elems[el].second;
+	PTransf16 local_el = elems[el].first;
+	while(i != -1){
+		word.push_back(i);
+		i = elems[local_el].second;
+		local_el = elems[local_el].first;
+	}
+	for(i=0; i<word.size(); i++){
+    printf("%d|", word[i]);		
+	}
+  printf("\n");		   
+						   
+						   
 }

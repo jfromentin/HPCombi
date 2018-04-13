@@ -142,7 +142,8 @@ void hpcombi_gpu(const int* __restrict__ words, const uint32_t* __restrict__ d_g
 	cudaSetDevice(CUDA_DEVICE);
 	uint32_t* d_x;
 	int* d_words;
-	uint64_t* d_hashed;	
+	uint64_t* d_hashed;
+	float timer;
 
 	gpuErrchk( cudaMalloc((void**)&d_words, size_word*nb_words * sizeof(int)) ); // TODO do not reallocate
 	gpuErrchk( cudaMalloc((void**)&d_x, size * nb_words*nb_gen * sizeof(uint32_t)) ); // TODO do not reallocate
@@ -165,18 +166,42 @@ void hpcombi_gpu(const int* __restrict__ words, const uint32_t* __restrict__ d_g
 			exit(1);
 		}
 	}
+	//~ printf("nb_words : %d\n", nb_words);
+	//~ for(int i=0; i<size_word*nb_words; i++){
+		//~ printf("%d|", words[i]);
+		//~ if(i%size_word == size_word-1)
+		//~ printf("\n");		
+	//~ }
+
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+
+
 	dim3 block(32, block_size);
 	dim3 grid(1, (nb_words*nb_gen + block.y-1)/block.y);
-	//~ printf("Blockx : %d, Blocky : %d, Gridx : %d, Gridy : %d\n", block.x, block.y, grid.x, grid.y);
-		//~ hpcombi_kernel<<<grid, block>>>(d_x, d_gen, d_words, d_hashed, size, nb_words, size_word, nb_gen);
-		permute_all_kernel<<<grid, block>>>(d_x, d_gen, d_words, size, nb_words, size_word, nb_gen);
+	cudaEventRecord(start);
+		permute_all_kernel<<<grid, block>>>(d_x, d_gen, d_words, size, nb_words, size_word, nb_gen);		
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&timer, start, stop);
+	//~ printf("permute time : %.2fns\n", timer/nb_words/nb_gen*1e6);
+		
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
-		hash_kernel3<<<grid, block>>>(d_x, d_hashed, size, nb_words*nb_gen);
+	
+	cudaEventRecord(start);
+		hash_kernel3<<<grid, block>>>(d_x, d_hashed, size, nb_words*nb_gen);		
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&timer, start, stop);
+	//~ printf("hash time : %.2fns\n", timer/nb_words/nb_gen*1e6);
+	
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaMemcpy(hashed, d_hashed, nb_words*nb_gen * sizeof(uint64_t), cudaMemcpyDeviceToHost) );
-
+	//~ for(int i=0; i<nb_words*nb_gen; i++)
+		//~ hashed[i] = hashed[i]%1024;
 	cudaFree(d_x);
 
 	cudaFree(d_words);
@@ -188,12 +213,12 @@ bool equal_gpu(const int* __restrict__ word1, const int* __restrict__ word2, con
 	cudaSetDevice(CUDA_DEVICE);
 	uint32_t* d_x;
 	int* d_words;
-	bool equal;
-	bool* d_equal;
+	int equal;
+	int* d_equal;
 
 	gpuErrchk( cudaMalloc((void**)&d_words, size_word*2 * sizeof(int)) ); // TODO do not reallocate
 	gpuErrchk( cudaMalloc((void**)&d_x, size * 2 * sizeof(uint32_t)) ); // TODO do not reallocate
-	gpuErrchk( cudaMalloc((void**)&d_equal, sizeof(bool)) );
+	gpuErrchk( cudaMalloc((void**)&d_equal, sizeof(int)) );
 
 	dim3 blockInit(128, 1);
 	dim3 gridInit(( size*2 + blockInit.x-1 )/blockInit.x, 1);
@@ -204,18 +229,36 @@ bool equal_gpu(const int* __restrict__ word1, const int* __restrict__ word2, con
 	gpuErrchk( cudaMemcpy(d_words, word1, size_word * sizeof(int), cudaMemcpyHostToDevice) );
 	gpuErrchk( cudaMemcpy(d_words+size_word, word2, size_word * sizeof(int), cudaMemcpyHostToDevice) );
 
-	dim3 block(32, block_size);
-	dim3 grid(1, (2 + block.y-1)/block.y);
-		equal_kernel<<<grid, block>>>(d_x, d_gen, d_words, d_equal, size, size_word);
+	//~ dim3 block(32, block_size);
+	//~ dim3 grid(1, (2 + block.y-1)/block.y);
+		//~ equal_kernel<<<grid, block>>>(d_x, d_gen, d_words, d_equal, size, size_word, nb_gen);
+	dim3 block(128, 1);
+	dim3 grid((size + block.x-1)/block.x, 1);
+		equal_kernel2<<<grid, block>>>(d_x, d_gen, d_words, d_equal, size, size_word, nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
-	gpuErrchk( cudaMemcpy(&equal, d_equal, sizeof(bool), cudaMemcpyDeviceToHost) );
+	gpuErrchk( cudaMemcpy(&equal, d_equal, sizeof(int), cudaMemcpyDeviceToHost) );
 
 	cudaFree(d_x);
 	cudaFree(d_words);
 	cudaFree(d_equal);
+	//~ printf("equal : %d\n", equal);
+  //~ for(int i=0; i<size_word; i++){
+	  //~ if(word1[i]>-1)
+	//~ printf("%d|", word1[i]);
+  //~ }
+  //~ printf("\n");
+  //~ for(int i=0; i<size_word; i++){
+	  //~ if(word2[i]>-1)
+	//~ printf("%d|", word2[i]);
+  //~ }
+  //~ printf("\n\n");
+  //~ printf("equal : %d, size : %d\n", equal, size);
+	bool out = (equal == size) ? true:false;
+	//~ bool out = (equal == 1) ? true:false;
 	
-	return equal;
+	return out;
+	//~ return true;
 }
 
 void hash_id_gpu(uint64_t* hashed, int block_size, const int size){

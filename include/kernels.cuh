@@ -21,7 +21,8 @@ __device__ void hash_kernel3_device(uint32_t* __restrict__ d_x, uint64_t* d_hash
 __global__ void hash_kernel3(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const int size, const int nb_vect);
 __device__ void permute_kernel(uint32_t* __restrict__ d_x, const uint32_t* __restrict__ d_y, const int size, const int num);
 __global__ void initId_kernel(uint32_t * __restrict__ d_x, const int size, const int nb_words, const int nb_gen);
-__global__ void equal_kernel(uint32_t* __restrict__ d_x, const int* __restrict__ d_words, bool d_equal, const int size, const int size_word);
+__global__ void equal_kernel(uint32_t* __restrict__ d_x, const int* __restrict__ d_words, int* d_equal, const int size, const int size_word, const int nb_gen);
+__global__ void equal_kernel2(uint32_t* __restrict__ d_x, const int* __restrict__ d_words, int* d_equal, const int size, const int size_word, const int nb_gen);
 
 
 
@@ -79,6 +80,7 @@ __global__ void permute_gpu_gen (T * __restrict__ d_x, T * __restrict__ d_y, con
   }
 }
 
+
 __global__ void hpcombi(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const int size, const int nb_vect){
 	hash_kernel3_device(d_x, d_hashed, size, nb_vect);
 }
@@ -109,10 +111,15 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
   const int offset_d_x =  tidy * size;
   int offset_d_gen;
   int index;
+  //~ if(tidy==0&&lane==0)
+  //~ printf("permute pointeur : %u, size : %d\n", d_gen[17], size);
+  //~ printf("permute pointeur : %p\n", d_gen);
   
   if(tidy/nb_gen<nb_words){
     for(int j=0; j<size_word; j++){
-      offset_d_gen =  d_words[j + (tidy/nb_gen) * size_word] * size;  
+      offset_d_gen =  d_words[j + (tidy/nb_gen) * size_word];
+      //~ if(offset_d_gen>=nb_gen)
+        //~ printf("offset_d_gen : %d\n", offset_d_gen);
       //~ if(tidy==4&&lane==0)
         //~ printf("j : %d, offset_d_gen : %d\n", j, offset_d_gen);
       if(offset_d_gen > -1){
@@ -120,7 +127,9 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
           index = lane + warpSize * coef;
           if (index < size){
             //~ d_x[index + offset_d_x] = d_gen[ d_x[index + offset_d_x] + offset_d_gen];
-            d_x[index + offset_d_x] = d_x[ d_gen[index + offset_d_gen] + offset_d_x];
+                      //~ if(d_gen[index + offset_d_gen * size] >= size )
+      //~ printf("d_gen[] : %d\n", d_gen[index + offset_d_gen * size]);
+            d_x[index + offset_d_x] = d_x[ d_gen[index + offset_d_gen * size] + offset_d_x];
             //~ if(tidy==0)
             //~ printf("j : %d, tidy : %d, gen : %d, lane : %d, d_x : %u\n", j, tidy, tidy%nb_gen, lane, d_x[index + offset_d_x]);
           }
@@ -139,8 +148,90 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
   }
 }
 
+
+
+__global__ void equal_kernel2(uint32_t* __restrict__ d_x, const uint32_t* __restrict__ d_gen, const int* __restrict__ d_words, 
+                              int* d_equal, const int size, const int size_word, const int nb_gen){
+  // Global thread id and warp id
+  const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  const int nb_threads = blockDim.x*gridDim.x;
+  const int wid = threadIdx.x / warpSize;
+  const int lane = threadIdx.x % warpSize;
+  static __shared__ int shared[32];
+  const int coefPerThread = (size + nb_threads-1) / nb_threads;
+
+  int offset_d_gen1, offset_d_gen2;
+  int index;
+
+
+  if(tid == 0)
+    d_equal[0] = 0;
+  //~ if(tid==0)
+  //~ printf("equal pointeur : %u, size : %d\n", d_gen[17], size);
+  //~ printf("equal pointeur : %p\n", d_gen);
+  
+  for(int j=0; j<size_word; j++){
+    offset_d_gen1 =  d_words[j];
+    offset_d_gen2 =  d_words[j + size_word];
+    if(offset_d_gen1 > nb_gen || offset_d_gen2 > nb_gen)
+      printf("offset_d_gen : %d, %d\n", offset_d_gen1, offset_d_gen2 );
+      for(int coef=0; coef<coefPerThread; coef++){
+        index = tid + nb_threads * coef;    
+        if (index < size){ 
+          //~ if(d_gen[index + offset_d_gen1 * size] > size || d_gen[index + offset_d_gen2 * size] > size)
+      //~ printf("d_gen[] : %u, %u, index : %d\n", d_gen[index + offset_d_gen1 * size], d_gen[index + offset_d_gen2 * size], index + offset_d_gen1 * size );
+          if(offset_d_gen1 > -1)
+            d_x[index] = d_x[ d_gen[index + offset_d_gen1 * size]];
+          if(offset_d_gen2 > -1)
+            d_x[index + size] = d_x[ d_gen[index + offset_d_gen2 * size] + size];
+      }
+    }
+  }
+  
+  int equal=0;
+
+  for(int coef=0; coef<coefPerThread; coef++){
+    index = tid + nb_threads * coef;
+    if (index < size){
+      if(d_x[index] == d_x[index + size]){
+        equal = 1;
+      }      
+    }
+  }
+  
+  // Reduction
+  for (int offset = warpSize/2; offset > 0; offset /= 2) 
+      equal += __shfl_down(equal, offset);
+
+  if(blockDim.x > 32){
+    if (lane == 0)
+      shared[wid] = equal;
+      
+    __syncthreads();
+    
+    if (wid == 0) {
+      equal = shared[lane];     
+      for (int offset = warpSize/2; offset > 0; offset /= 2) 
+          equal += __shfl_down(equal, offset);
+    }
+  }
+  //~ if(tid == 0)
+    //~ printf("equal : %d, coefPerThread : %d\n", equal, coefPerThread);
+  if(threadIdx.x == 0){
+    //~ printf("equal block : %d, block : %d\n", equal, blockIdx.x);
+    atomicAdd(d_equal, equal);
+  }    
+  //~ if(tid == 0){
+    //~ if(d_equal[0] == size)
+      //~ d_equal[0] = 1;
+    //~ else
+      //~ d_equal[0] = 0;
+  //~ }
+}
+
+
 __global__ void equal_kernel(uint32_t* __restrict__ d_x, const uint32_t* __restrict__ d_gen, const int* __restrict__ d_words, 
-                              bool d_equal, const int size, const int size_word){
+                              int* d_equal, const int size, const int size_word, const int nb_gen){
   const int tidy = blockIdx.y * blockDim.y + threadIdx.y;
   const int lane = threadIdx.x;
   const int coefPerThread = (size+warpSize-1) / warpSize;
@@ -152,38 +243,64 @@ __global__ void equal_kernel(uint32_t* __restrict__ d_x, const uint32_t* __restr
   
   if(tidy<2){
     for(int j=0; j<size_word; j++){
-      offset_d_gen =  d_words[j + tidy * size_word] * size;
+      offset_d_gen =  d_words[j + tidy * size_word];
+      if(offset_d_gen>nb_gen)
+        printf("offset_d_gen : %d\n", offset_d_gen);
       if(offset_d_gen > -1){
         for(int coef=0; coef<coefPerThread; coef++){
           index = lane + warpSize * coef;
           if (index < size){
-            d_x[index + offset_d_x] = d_x[ d_gen[index + offset_d_gen] + offset_d_x];
+                                  //~ if(d_gen[index + offset_d_gen * size] > size )
+      //~ printf("d_gen[] : %d\n", d_gen[index + offset_d_gen * size]);
+            d_x[index + offset_d_x] = d_x[ d_gen[index + offset_d_gen * size] + offset_d_x];
           }
         }
       }
     }
   }
-	if(tidy<1){
+	if(tidy == 0){
     if(lane == 0)
-      d_equal = 1;
+      d_equal[0] = 1;
     for(int coef=0; coef<coefPerThread; coef++){
       index = lane + warpSize * coef;
       if (index < size){
-        equal = (d_x[index] == d_x[index + size]);
+        equal = (d_x[index] == d_x[index + size]) ? 1:0;
       }
       for (int offset = warpSize/2; offset > 0; offset /= 2) 
         equal += __shfl_down(equal, offset);
       if(lane == 0){
-        if(equal != min(32, size)){
-          d_equal = 0;
+        
+          //~ for(int i=0; i<size_word*2; i++){
+            //~ printf("%d|", d_words[i]);
+            //~ if(i%size_word == size_word-1)
+          //~ printf("\n");
+          //~ }
+          //~ printf("\n");
+          
+          //~ for(int i=0; i<size*2; i++){
+            //~ printf("%u|", d_x[i]);
+            //~ if(i%size == size-1)
+          //~ printf("\n");
+          //~ }
+          //~ printf("\n");
+          
+        if(equal != 32 && equal != size){
+          d_equal[0] = 0;
+          //~ printf("equal : %d, sum : %d\n", *d_equal, equal);
           break;
+        }
+        else{
+          
+          
         }
       }
       
     }
 	  
   }
-  
+
+//~ if(tidy == 0 and lane == 0)
+//~ printf("equal : %d\n", d_equal);
   
 }
 
