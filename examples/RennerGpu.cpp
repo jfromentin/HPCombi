@@ -161,21 +161,7 @@ struct eqstr
   int nb_gen=NB_GEN;
   bool operator()(const key key1, const key key2) const
   {
-    //~ printf("size, %d\n", size);
-      //~ for(int i=0; i<size_word; i++){
-	//~ printf("%d|", key1.word[i]);
-  //~ }
-  //~ printf("\n");
-  //~ for(int i=0; i<size_word; i++){
-	//~ printf("%d|", key2.word[i]);
-  //~ }
-  //~ printf("\n\n");
-
-    //~ return (&(key1.word[0]) == &(key2.word[0])) || (equal_gpu(&(key1.word[0]), &(key2.word[0]), key2.d_gen, block_size, size, size_word, nb_gen));
-    //~ printf("%lu\n", key1.hashed);
-    //~ printf("%lu\n", key2.hashed);
     return (key1.hashed == key2.hashed) && (equal_gpu(&(key1.word[0]), &(key2.word[0]), key2.d_gen, block_size, size, size_word, nb_gen));
-    //~ printf("\n");
     //~ return key1.hashed == key2.hashed;
   }
 };
@@ -293,17 +279,10 @@ auto tstartGpu = high_resolution_clock::now();
       new_key.hashed = hashed[j];
       new_key.word = newWord;
       new_key.d_gen = d_gen;
-      //~ printf("Insert new\n");
       if(elems.insert({ new_key, newWord}).second){
         newtodo.push_back(newWord);
-      //~ cout << "new   " << j << "  " << hashed[j] << endl;
-      //~ print_word(elems[new_key]);
-      //~ print_word(newWord);
-      //~ printf("hash : %lu\n", hashed[j]);
       }
       else{
-        //~ cout << "old  " << j << "  " << hashed[j] << endl;
-        //~ print_word(elems[hashed[j]]);
       }
     }
 
@@ -311,14 +290,6 @@ auto tstartGpu = high_resolution_clock::now();
     std::swap(todo, newtodo);
     cout << i << ", todo = " << todo.size() << ", elems = " << elems.size()
          << ", #Bucks = " << elems.bucket_count() << endl;
-         
-         
-    //~ for(int i=0; i<todo.size()*NODE; i++){
-      //~ printf("%d|", *(&(todo[0][0])+i));
-      //~ if(i%NODE==NODE-1)
-      //~ printf("\n");
-    //~ }
-    //~ printf("\n");
     
     if(todo.size() == 0)
       break;
