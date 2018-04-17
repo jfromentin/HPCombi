@@ -19,7 +19,7 @@ class Vector_gpu {
 		void copyHostToDevice();	
 		void copyDeviceToHost();
 		void clear();
-		void swap(Vector_gpu<T> other);
+		void swap(Vector_gpu<T>* other);
 };
 
 // Explicit instentiation

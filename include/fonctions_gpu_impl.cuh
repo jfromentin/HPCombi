@@ -101,14 +101,14 @@ void shufl_gpu(T* __restrict__ x, const T* __restrict__ y, const size_t size, fl
 }
 
 
-void hpcombi_gpu(Vector_gpu<int> words, const uint32_t* __restrict__ d_gen, uint64_t* hashed, 
+void hpcombi_gpu(Vector_gpu<int>* words, const uint32_t* __restrict__ d_gen, uint64_t* hashed, 
 				int block_size, const int size, const int size_word, const int nb_gen){
 	cudaSetDevice(CUDA_DEVICE);
 	uint32_t* d_x;
 	//~ int* d_words;
 	uint64_t* d_hashed;
 	float timer;
-	int nb_words = words.size/size_word;
+	int nb_words = words->size/size_word;
 
 	//~ gpuErrchk( cudaMalloc((void**)&d_words, size_word*nb_words * sizeof(int)) ); // TODO do not reallocate
 	gpuErrchk( cudaMalloc((void**)&d_x, size * nb_words*nb_gen * sizeof(uint32_t)) ); // TODO do not reallocate
@@ -120,7 +120,7 @@ void hpcombi_gpu(Vector_gpu<int> words, const uint32_t* __restrict__ d_gen, uint
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 
-	words.copyHostToDevice();
+	words->copyHostToDevice();
 	//~ gpuErrchk( cudaMemcpy(d_words, words, size_word*nb_words * sizeof(int), cudaMemcpyHostToDevice) );
 	for(int i=0; i<5; i++){
 		int gridy = (nb_words*nb_gen + block_size-1)/block_size;		
@@ -141,7 +141,7 @@ void hpcombi_gpu(Vector_gpu<int> words, const uint32_t* __restrict__ d_gen, uint
 	dim3 grid(1, (nb_words*nb_gen + block.y-1)/block.y);
 	cudaEventRecord(start);
 		//~ permute_all_kernel<<<grid, block>>>(d_x, d_gen, d_words, size, nb_words, size_word, nb_gen);		
-		permute_all_kernel<<<grid, block>>>(d_x, d_gen, words.device, size, nb_words, size_word, nb_gen);		
+		permute_all_kernel<<<grid, block>>>(d_x, d_gen, words->device, size, nb_words, size_word, nb_gen);		
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&timer, start, stop);
@@ -168,6 +168,7 @@ void hpcombi_gpu(Vector_gpu<int> words, const uint32_t* __restrict__ d_gen, uint
 
 	//~ gpuErrchk( cudaFree(d_words) );
 	gpuErrchk( cudaFree(d_hashed) );
+	// Destructor is called here
 }
 
 bool equal_gpu(const int* __restrict__ word1, const int* __restrict__ word2, const uint32_t* __restrict__ d_gen, 

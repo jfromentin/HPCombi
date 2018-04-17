@@ -24,18 +24,17 @@ Vector_gpu<T>::Vector_gpu(size_t capacityIn){
 
 template <typename T>
 Vector_gpu<T>::~Vector_gpu(){
-	printf("free\n");
-	if(host != NULL)
+	capacity = 0;
+	size = 0;
 	gpuErrchk( cudaFreeHost(host) );
-	if(device != NULL)
 	gpuErrchk( cudaFree(device) );	
 	host = NULL;
-	device = NULL;	
+	device = NULL;
 }
 
 template <typename T>
 void Vector_gpu<T>::realloc(){
-	printf("Resizing, %lu\n", capacity);
+	//~ printf("Resizing, %lu\n", capacity);
 	T* oldHost = host;
 	T* oldDevice = device;
 	gpuErrchk( cudaMallocHost((void**)&host, capacity * sizeof(T)) );
@@ -43,8 +42,6 @@ void Vector_gpu<T>::realloc(){
 	for(size_t i=0; i<size; i++){
 		host[i] = oldHost[i];
 	}
-	printf("oldHost : %p, oldDevice : %p\n", oldHost, oldDevice);
-	printf("host : %p, device : %p\n", host, device);
 	gpuErrchk( cudaFreeHost(oldHost) );
 	gpuErrchk( cudaFree(oldDevice) );
 	oldHost = NULL;
@@ -53,7 +50,6 @@ void Vector_gpu<T>::realloc(){
 
 template <typename T>
 void Vector_gpu<T>::push_back(T new_elem){
-	printf("pushbak1\n");
 	if(capacity < size+1){
 		capacity *= 2;
 		realloc();
@@ -64,7 +60,6 @@ void Vector_gpu<T>::push_back(T new_elem){
 
 template <typename T>
 void Vector_gpu<T>::push_back(T* new_array, size_t size_array){
-	printf("pushbak2\n");
 	if(capacity < size+size_array){
 		while(capacity < size+size_array)
 			capacity *= 2;
@@ -92,36 +87,27 @@ void Vector_gpu<T>::clear(){
 }
 
 template <typename T>
-void Vector_gpu<T>::swap(Vector_gpu<T> other){
-	printf("swap\n");
-	//~ if(other.size > capacity){
-		//~ capacity = other.capacity;
-		//~ printf("swap1\n");
-		//~ realloc();
-	//~ }
-	//~ else if(size > other.capacity){
-		//~ other.capacity = capacity;
-		//~ printf("swap2\n");
-		//~ other.realloc();
-	//~ }
+void Vector_gpu<T>::swap(Vector_gpu<T>* other){
 	T* tmpP;
 	size_t tmp;
 	
 	tmpP = host;
-	host = other.host;
-	other.host = tmpP;
+	host = other->host;
+	other->host = tmpP;
 	
 	tmpP = device;
-	device = other.device;
-	other.device = tmpP;
+	device = other->device;
+	other->device = tmpP;
+	
 	
 	tmp = capacity;
-	capacity = other.capacity;
-	other.capacity = tmp;
+	capacity = other->capacity;
+	other->capacity = tmp;
 	
 	tmp = size;
-	size = other.size;
-	other.size = tmp;
+	size = other->size;
+	other->size = tmp;
+	
 	tmpP = NULL;
 }
 

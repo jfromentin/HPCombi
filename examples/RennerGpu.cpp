@@ -189,7 +189,7 @@ auto tstartGpu = high_resolution_clock::now();
     newtodo.clear();
     uint64_t* hashed = (uint64_t*)malloc(todo.size/NODE*nb_gen * sizeof(uint64_t)); // Todo use of vector
     //~ hpcombi_gpu(&(todo[0][0]), d_gen, hashed, block_size, size, NODE, todo.size/NODE, nb_gen);
-    hpcombi_gpu(todo, d_gen, hashed, block_size, size, NODE, nb_gen);
+    hpcombi_gpu(&todo, d_gen, hashed, block_size, size, NODE, nb_gen);
     
     for(int j=0; j<todo.size/NODE*nb_gen; j++){
       //~ std::array<int, NODE> newWord = todo[j/nb_gen];        
@@ -212,7 +212,7 @@ auto tstartGpu = high_resolution_clock::now();
 
     free(hashed);
     //~ std::swap(todo, newtodo);
-    todo.swap(newtodo);
+    todo.swap(&newtodo);
     cout << i << ", todo = " << todo.size/NODE << ", elems = " << elems.size()
          << ", #Bucks = " << elems.bucket_count() << endl;
     //~ cout << todo.capacity() << endl;
