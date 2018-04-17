@@ -384,7 +384,9 @@ template <> struct hash<HPCombi::Vect16> {
   inline size_t operator()(const HPCombi::Vect16 &ar) const {
     __int128 v0 = _mm_extract_epi64(ar.v, 0);
     __int128 v1 = _mm_extract_epi64(ar.v, 1);
-    return ((v1 * HPCombi::prime + v0) * HPCombi::prime) >> 64;
+    size_t hashed = ((v1 * HPCombi::prime + v0) * HPCombi::prime) >> 64;
+    //~ hashed = hashed%2048;
+    return hashed;
     
 	//~ int nb_vect = 1;
 	//~ int size = 4;

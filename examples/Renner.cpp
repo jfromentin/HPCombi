@@ -78,9 +78,19 @@ const vector<PTransf16> gens{s2, s3, s4, s5, s6, s7};
 const int nprint = 6;
 
 
+
+struct eqstr
+{
+  bool operator()(const PTransf16 key1, const PTransf16 key2) const
+  {
+	  hash<PTransf16> func;
+    return func(key1) == func(key2);
+  }
+};
+
 #ifdef HPCOMBI_HAVE_DENSEHASHMAP
 google::dense_hash_map<PTransf16, std::pair<PTransf16, int>,
-                       hash<PTransf16>, equal_to<PTransf16>> elems(1000);
+                       hash<PTransf16>, equal_to<PTransf16>> elems(5000);
 #else
 unordered_map<PTransf16, std::pair<PTransf16, int>> elems;
 #endif

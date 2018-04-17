@@ -31,18 +31,11 @@
 #include <chrono>
 
 #include <iotools.hpp>
-
+#include "vector_gpu.cuh"
 
 using namespace std;
 using namespace HPCombi;
 using namespace std::chrono;
-
-//~ #ifdef HPCOMBI_HAVE_DENSEHASHMAP
-//~ google::dense_hash_map<PTransf16, std::pair<PTransf16, int>,
-                       //~ hash<PTransf16>, equal_to<PTransf16>> elems;
-//~ #else
-//~ unordered_map<PTransf16, std::pair<PTransf16, int>> elems;
-//~ #endif
 
 void hash_cpu(const uint32_t* __restrict__ x, uint64_t* hashed, const int size, const int nb_vect) {
   const uint64_t prime = 0x9e3779b97f4a7bb9;
@@ -59,82 +52,6 @@ void hash_cpu(const uint32_t* __restrict__ x, uint64_t* hashed, const int size, 
     hashed[k] = tmp;
   }
 }
-
-
-
-//~ int main() {
-  //~ using namespace std::chrono;
-  //~ int size = 50000;
-  //~ int nb_vect = 5;
-  //~ int block_size = 32;
-  //~ int nb_hash = 100;
-  //~ int size_start = 2000;
-  //~ int size_end = 250000;
-  //~ int size_nb = 5;
-  //~ int vect_start = 200;
-  //~ int vect_end = 300;
-  //~ int vect_nb = 2;
-  //~ int coefPerThread;
-  //~ int kernel_num = 3;
-  
-  //~ double timeGpu, timeCpu; 
-  
-  //~ string file_name = to_string(size_end) + to_string(size_nb) + to_string(vect_end) + to_string(vect_nb) + to_string(nb_hash) + to_string(kernel_num);
-  //~ printf("kernel_num : %d\n", kernel_num);
-  //~ for(nb_vect = vect_start; nb_vect<vect_end; nb_vect = ceil(nb_vect*pow(vect_end/vect_start, 1./vect_nb)) ){
-    //~ printf("nb_vect : %d\n", nb_vect);
-
-    //~ for(size = size_start; size<size_end; size = ceil(size *pow(size_end/size_start, 1./size_nb))){
-      //~ printf("size : %d\n", size);
-      //~ uint32_t* gen = (uint32_t*)malloc(size * nb_vect * sizeof(uint32_t));    
-      //~ uint64_t* hashed = (uint64_t*)malloc(nb_vect * sizeof(uint64_t));     
-       
-      //~ for(int i=0; i<nb_vect; i++)
-        //~ for(int j=0; j<size; j++)
-          //~ gen[i*size + j] = (uint32_t)(j+i);
-  
-      //~ for(block_size = 4; block_size<=5; block_size*=2){
-        //~ // GPU ############################
-        //~ auto tstartGpu = high_resolution_clock::now();
-          //~ for(int j=0; j<nb_hash; j++)
-            //~ hash_gpu(gen, block_size, hashed, size, nb_vect, kernel_num);
-        //~ auto tfinGpu = high_resolution_clock::now();
-        //~ auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
-        //~ timeGpu = tmGpu.count()/nb_hash*1e6;
-        //~ for(int i=0; i<nb_vect; i++)
-          //~ printf("Hash GPU : %lu, index : %lu\n", hashed[i], hashed[i]%100000);
-        //~ // CPU ############################
-        //~ auto tstartCpu = high_resolution_clock::now();
-          //~ for(int j=0; j<nb_hash; j++)
-            //~ hash_cpu(gen, hashed, size, nb_vect);
-        //~ auto tfinCpu = high_resolution_clock::now();
-        //~ auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
-        //~ timeCpu = tmCpu.count()/nb_hash*1e6;
-        //~ for(int i=0; i<nb_vect; i++)
-          //~ printf("Hash CPU : %lu, index : %lu\n", hashed[i], hashed[i]%100000);
-         
-        //~ if(kernel_num == 1)
-          //~ coefPerThread = (size+block_size-1) / block_size;
-        //~ else if(kernel_num > 1)
-          //~ coefPerThread = (size+32-1) / 32;
-        //~ printf("coefPerThread : %d, nb vect : %d\n", coefPerThread, nb_vect);
-        //~ printf("Speedup : %f\n", timeCpu/timeGpu);
-        //~ printf("Block size : %d, size : %lu, time : %.3f us, time/vect : %.3f us\n", block_size, size, timeGpu, timeGpu/nb_vect);
-        //~ printf("Block size : , size : %lu, time : %.3f us, time/vect : %.3f us\n", size, timeCpu, timeCpu/nb_vect);
-        
-        //~ write_hash(block_size, size, nb_vect, hashed, timeGpu, file_name);
-        //~ write_hash(1, size, nb_vect, hashed, timeCpu, file_name);
-      //~ }
-      //~ printf("\n");
-  
-      //~ free(gen);
-      //~ free(hashed);
-    //~ }
-  //~ }
-  //~ printf("end\n");
-
-//~ }
-
 
 
 #define HASH_SIZE 100000
@@ -161,8 +78,8 @@ struct eqstr
   int nb_gen=NB_GEN;
   bool operator()(const key key1, const key key2) const
   {
-    return (key1.hashed == key2.hashed) && (equal_gpu(&(key1.word[0]), &(key2.word[0]), key2.d_gen, block_size, size, size_word, nb_gen));
-    //~ return key1.hashed == key2.hashed;
+    //~ return (key1.hashed == key2.hashed) && (equal_gpu(&(key1.word[0]), &(key2.word[0]), key2.d_gen, block_size, size, size_word, nb_gen));
+    return key1.hashed == key2.hashed;
   }
 };
 
@@ -235,9 +152,10 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   malloc_gen(&d_gen, gen, size, nb_gen);
 
 
-  google::dense_hash_map< key, std::array<int, NODE>, hash_gpu_class, eqstr> elems(400);
+  google::dense_hash_map< key, std::array<int, NODE>, hash_gpu_class, eqstr> elems(5000);
 
-  vector< std::array<int, NODE> > todo, newtodo;
+  Vector_gpu<int> todo, newtodo;
+  //~ vector< std::array<int, NODE> > todo, newtodo;
   std::array<int, NODE> empty_word;
   empty_word.fill(-10);
   
@@ -253,7 +171,8 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   //~ printf("hash : %lu\n", hashedId);
   std::array<int, NODE> id_word;
   id_word.fill(-1);
-  todo.push_back(id_word);
+  //~ todo.push_back(id_word);
+  todo.push_back(&(id_word[0]), NODE);
     
   key id_key;
   id_key.hashed = hashedId;
@@ -268,11 +187,15 @@ auto tstartGpu = high_resolution_clock::now();
 
   for(int i=0; i<NODE; i++){
     newtodo.clear();
-    uint64_t* hashed = (uint64_t*)malloc(todo.size()*nb_gen * sizeof(uint64_t)); // Todo use of vector
-    hpcombi_gpu(&(todo[0][0]), d_gen, hashed, block_size, size, NODE, todo.size(), nb_gen);
+    uint64_t* hashed = (uint64_t*)malloc(todo.size/NODE*nb_gen * sizeof(uint64_t)); // Todo use of vector
+    //~ hpcombi_gpu(&(todo[0][0]), d_gen, hashed, block_size, size, NODE, todo.size/NODE, nb_gen);
+    hpcombi_gpu(todo, d_gen, hashed, block_size, size, NODE, nb_gen);
     
-    for(int j=0; j<todo.size()*nb_gen; j++){
-      std::array<int, NODE> newWord = todo[j/nb_gen];        
+    for(int j=0; j<todo.size/NODE*nb_gen; j++){
+      //~ std::array<int, NODE> newWord = todo[j/nb_gen];        
+      std::array<int, NODE> newWord;
+      for(int k=0; k<NODE; k++)
+        newWord[k] = todo.host[(j/nb_gen)*NODE + k];        
       newWord[i] = j%nb_gen;
       //~ print_word(newWord);
       key new_key;
@@ -280,18 +203,20 @@ auto tstartGpu = high_resolution_clock::now();
       new_key.word = newWord;
       new_key.d_gen = d_gen;
       if(elems.insert({ new_key, newWord}).second){
-        newtodo.push_back(newWord);
+        //~ newtodo.push_back(newWord);
+        newtodo.push_back(&(newWord[0]), NODE);
       }
       else{
       }
     }
 
     free(hashed);
-    std::swap(todo, newtodo);
-    cout << i << ", todo = " << todo.size() << ", elems = " << elems.size()
+    //~ std::swap(todo, newtodo);
+    todo.swap(newtodo);
+    cout << i << ", todo = " << todo.size/NODE << ", elems = " << elems.size()
          << ", #Bucks = " << elems.bucket_count() << endl;
-    
-    if(todo.size() == 0)
+    //~ cout << todo.capacity() << endl;
+    if(todo.size/NODE == 0)
       break;
   }
   
