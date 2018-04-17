@@ -14,7 +14,7 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
                               const int size, const int nb_words, const int size_word, const int nb_gen);
 
 __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const int size, const int nb_vect);
-__global__ void initId_kernel(uint32_t * __restrict__ d_x, const int size, const int nb_words, const int nb_gen);
+__global__ void initId_kernel(uint32_t * __restrict__ d_x, const int size, const int nb_vect);
 __global__ void equal_kernel(uint32_t* __restrict__ d_x, const int* __restrict__ d_words, int* d_equal, const int size, const int size_word, const int nb_gen);
 
 
@@ -206,10 +206,15 @@ __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, cons
 }
 
 
-__global__ void initId_kernel(uint32_t * __restrict__ d_x, const int size, const int nb_words, const int nb_gen){
-  const int tidx = blockIdx.x * blockDim.x + threadIdx.x;
-  if(tidx < size*nb_words*nb_gen){
-    d_x[tidx] = tidx%size;
+__global__ void initId_kernel(uint32_t * __restrict__ d_x, const int size, const int nb_vect){
+  const int lane = threadIdx.x;
+	const int coefPerThread = (size + warpSize-1) / warpSize;
+  const int tidy = blockIdx.y * blockDim.y + threadIdx.y;
+  int index;
+  for (int j=0; j<coefPerThread; j++){
+    index = lane + warpSize*j;
+    if(index < size && tidy < nb_vect)
+      d_x[index + tidy*size] = index;    
   }
 }
 

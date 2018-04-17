@@ -3,27 +3,46 @@
 #if COMPILE_CUDA==1
 
 template <typename T>
-class Vector_gpu {
+class Vector_cpugpu {
 	public:
 		T* host;
 		T* device;
 		size_t capacity;
 		size_t size;
 		
-		Vector_gpu();	
-		Vector_gpu(size_t capacityIn);	
-		~Vector_gpu();	
+		Vector_cpugpu();	
+		Vector_cpugpu(size_t capacityIn);	
+		~Vector_cpugpu();	
 		void realloc();	
 		void push_back(T new_elem);	
-		void push_back(T* new_array, size_t size_array);	
+		void push_back(T* new_array, size_t size_array);
+		void resize(size_t newCapacity, int force=0);
 		void copyHostToDevice();	
 		void copyDeviceToHost();
 		void clear();
-		void swap(Vector_gpu<T>* other);
+		void swap(Vector_cpugpu<T>* other);
 };
 
 // Explicit instentiation
-template class Vector_gpu<int>;
+template class Vector_cpugpu<int>;
+template class Vector_cpugpu<uint64_t>;
+
+
+template <typename T>
+class Vector_gpu {
+	public:
+		T* device;
+		size_t capacity;
+		
+		Vector_gpu();	
+		Vector_gpu(size_t sizeIn);	
+		~Vector_gpu();	
+		void realloc();
+		void resize(size_t newCapacity);
+};
+
+// Explicit instentiation
+template class Vector_gpu<uint32_t>;
 
 
 #endif  // USE_CUDA
