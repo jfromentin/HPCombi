@@ -176,6 +176,7 @@ __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, cons
   const int lane = threadIdx.x;
   const int coefPerThread = (size+warpSize-1) / warpSize;
   const uint64_t prime = 0x9e3779b97f4a7bb9;
+  //~ const uint64_t prime = 29;
   uint64_t out=1;
   uint64_t coef=0;
     
@@ -202,7 +203,7 @@ __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, cons
       out += __shfl_down(out, offset);
 
   if(lane == 0)
-    d_hashed[tidy] = out;
+    d_hashed[tidy] = out >> 32;
 }
 
 
