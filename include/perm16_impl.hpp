@@ -24,10 +24,6 @@
 #include "fallback/gcdlcm.hpp"  // lcm until c++17
 #endif  // HAVE_EXPERIMENTAL_NUMERIC_LCM
 
-#if COMPILE_CUDA==1
-extern MemGpu memGpu;
-#endif  // USE_CUDA
-
 namespace HPCombi {
 
 
@@ -98,30 +94,6 @@ inline Vect16 Vect16::permuted(const Vect16 &other) const {
   return _mm_shuffle_epi8(v, other);
 }
 
-
-#if COMPILE_CUDA==1
-inline Vect16 Vect16::permuted_gpu(const Vect16 &other) const {
-
-  // Simple pointers are needed to cpy to GPU
-  float timers[4] = {0, 0, 0, 0};
-  Vect16 res;
-  // Use of preallocated pinned memory
-	// Copy to pinned memory
-  for(auto i=0; i<Size; i++){
-	  memGpu.h_x8[i] = (*this)[i];
-	  memGpu.h_y8[i] = other[i];
-  }
-  
-  shufl_gpu<uint8_t>(memGpu.h_x8, memGpu.h_y8, Size, timers);
-
-  // Copy result from pinned memory
-  for(auto i=0; i<Size; i++){
-	  res[i] = memGpu.h_x8[i];
-  }
-  return res;
-}
-
-#endif  // USE_CUDA
 
 inline uint8_t Vect16::sum_ref() const {
   uint8_t res = 0;

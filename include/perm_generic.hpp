@@ -26,10 +26,6 @@
 #include <iomanip>
 #include <chrono>
 
-#if COMPILE_CUDA==1
-extern MemGpu memGpu;
-#endif  // USE_CUDA
-
 namespace HPCombi {
 
 template <size_t _Size, typename Expo = uint8_t> struct VectGeneric {
@@ -79,88 +75,6 @@ template <size_t _Size, typename Expo = uint8_t> struct VectGeneric {
 	  //~ std::random_shuffle(res.begin(), res.end());
 	  //~ return res;
 	//~ }
-	
-#if COMPILE_CUDA==1
-	VectGeneric permuted_gpu(const VectGeneric &u) const {
-
-	  // Simple pointers are needed to cpy to GPU
-	  float timers[4] = {0, 0, 0, 0};
-	  VectGeneric res;
-    // Use of preallocated pinned memory
-	  Expo *h_x, *h_y;
-    if (std::is_same<uint8_t, Expo>::value){
-      h_x = (Expo*)memGpu.h_x8;
-      h_y = (Expo*)memGpu.h_y8;
-    }
-    else if (std::is_same<uint16_t, Expo>::value){
-      h_x = (Expo*)memGpu.h_x16;
-      h_y = (Expo*)memGpu.h_y16;
-    }
-    else if (std::is_same<uint32_t, Expo>::value){
-      h_x = (Expo*)memGpu.h_x32;
-      h_y = (Expo*)memGpu.h_y32;
-    }
-    // Copy to pinned memory
-	  for(auto i=0; i<Size; i++){
-		  h_x[i] = v.data()[i];
-		  h_y[i] = u.v.data()[i];
-	  }
-	  
-	  shufl_gpu<Expo>(h_x, h_y, Size, timers);
-
-	  // Copy result from pinned memory
-	  for(auto i=0; i<Size; i++){
-		  res.v.data()[i] = h_x[i];
-	  }
-	  return res;
-	}
-	
-	
-	VectGeneric permuted_gpu_timer(const VectGeneric &u, float * timers) const {
-
-	  // Simple pointers are needed to cpy to GPU
-
-	  VectGeneric res;
-	  
-	  auto start = std::chrono::high_resolution_clock::now();
-	  
-    // Use of preallocated pinned memory
-	  Expo *h_x, *h_y;
-    if (std::is_same<uint8_t, Expo>::value){
-      h_x = (Expo*)memGpu.h_x8;
-      h_y = (Expo*)memGpu.h_y8;
-    }
-    else if (std::is_same<uint16_t, Expo>::value){
-      h_x = (Expo*)memGpu.h_x16;
-      h_y = (Expo*)memGpu.h_y16;
-    }
-    else if (std::is_same<uint32_t, Expo>::value){
-      h_x = (Expo*)memGpu.h_x32;
-      h_y = (Expo*)memGpu.h_y32;
-    }
-    // Copy to pinned memory
-	  for(auto i=0; i<Size; i++){
-		  h_x[i] = v.data()[i];
-		  h_y[i] = u.v.data()[i];
-	  }
-	  
-	  shufl_gpu<Expo>(h_x, h_y, Size, timers);
-
-	  // Copy result from pinned memory
-	  for(auto i=0; i<Size; i++){
-		  res.v.data()[i] = h_x[i];
-	  }
-	  
-	  auto end   = std::chrono::high_resolution_clock::now();
-	  auto elapsed_seconds = std::chrono::duration_cast<std::chrono::duration<float>>(end - start);
-      timers[3] = elapsed_seconds.count()*1000000;
-	  return res;
-	}
-	
-
-#endif  // USE_CUDA
-
-
 
   uint64_t first_non_zero(size_t bound = Size) const {
     for (uint64_t i = 0; i < bound; i++)

@@ -2,8 +2,6 @@
 include_directories(${CMAKE_SOURCE_DIR}/include ${PROJECT_BINARY_DIR})
 
 file(GLOB gpu_source_files "${CMAKE_SOURCE_DIR}/src/gpu/*.cu")
-#~ file(GLOB bench_gpu "${CMAKE_SOURCE_DIR}/benchmark/bench_gpu.cpp")
-
 
 if(USE_CUDA)
 	if( ("${CMAKE_VERSION}" VERSION_EQUAL 3.8) OR
