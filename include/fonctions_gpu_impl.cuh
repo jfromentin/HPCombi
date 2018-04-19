@@ -8,7 +8,6 @@
 #include <typeinfo>
 
 #include "fonctions_gpu.cuh"
-#include "vector_gpu.cuh"
 
 
 template <typename T>
@@ -23,6 +22,8 @@ template void shufl_gpu<uint32_t>(uint32_t* x, const uint32_t* y, const size_t s
 // Allocating memory
 //~ MemGpu memGpu(131072);
 MemGpu memGpu(32);
+
+
 
 template <typename T>
 void shufl_gpu(T* __restrict__ x, const T* __restrict__ y, const size_t size, float * timers)
@@ -104,16 +105,10 @@ void shufl_gpu(T* __restrict__ x, const T* __restrict__ y, const size_t size, fl
 void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
 				int block_size, const int size, const int size_word, const int nb_gen){
 	cudaSetDevice(CUDA_DEVICE);
-	//~ uint32_t* d_x;
-	//~ int* d_words;
-	//~ uint64_t* d_hashed;
 	float timer;
 	int nb_words = words->size/size_word;
 
-	//~ gpuErrchk( cudaMalloc((void**)&d_words, size_word*nb_words * sizeof(int)) ); // TODO do not reallocate
-	//~ gpuErrchk( cudaMalloc((void**)&d_x, size * nb_words*nb_gen * sizeof(uint32_t)) ); // TODO do not reallocate
 	d_x->resize(size * nb_words*nb_gen);
-	//~ gpuErrchk( cudaMalloc((void**)&d_hashed, nb_words*nb_gen * sizeof(uint64_t)) ); // TODO do not reallocate
 
 	dim3 blockInit(32, 4);
 	dim3 gridInit(1, ( nb_words*nb_gen + blockInit.y-1 )/blockInit.y);
@@ -122,7 +117,6 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, const uin
 	gpuErrchk( cudaPeekAtLastError() );
 
 	words->copyHostToDevice();
-	//~ gpuErrchk( cudaMemcpy(d_words, words, size_word*nb_words * sizeof(int), cudaMemcpyHostToDevice) );
 	for(int i=0; i<5; i++){
 		int gridy = (nb_words*nb_gen + block_size-1)/block_size;		
 		if(gridy > 65535 && block_size < 32){
@@ -140,13 +134,11 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, const uin
 
 	dim3 block(32, block_size);
 	dim3 grid(1, (nb_words*nb_gen + block.y-1)/block.y);
-	cudaEventRecord(start);
-		//~ permute_all_kernel<<<grid, block>>>(d_x, d_gen, d_words, size, nb_words, size_word, nb_gen);		
+	cudaEventRecord(start);		
 		permute_all_kernel<<<grid, block>>>(d_x->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&timer, start, stop);
-	//~ printf("permute time : %.2fns\n", timer/nb_words/nb_gen*1e6);
 		
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
@@ -156,34 +148,32 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, const uin
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&timer, start, stop);
-	//~ printf("hash time : %.2fns\n", timer/nb_words/nb_gen*1e6);
 	
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 	hashed->copyDeviceToHost();
-	//~ gpuErrchk( cudaMemcpy(hashed, d_hashed, nb_words*nb_gen * sizeof(uint64_t), cudaMemcpyDeviceToHost) );
-	//~ gpuErrchk( cudaFree(d_x) );
-
-	//~ for(int i=0; i<nb_words*nb_gen; i++){
-		//~ hashed[i] = hashed[i]%16384;		
-	//~ }
-
-	//~ gpuErrchk( cudaFree(d_words) );
-	//~ gpuErrchk( cudaFree(d_hashed) );
-	// Destructor is called here
 }
 
-bool equal_gpu(const int* __restrict__ word1, const int* __restrict__ word2, const uint32_t* __restrict__ d_gen, 
-				int block_size, const int size, const int size_word, const int nb_gen){
+bool equal_gpu(const key* key1, const key* key2, int block_size, const int size, const int size_word, const int nb_gen){
+	const int* word1 = &(key1->word[0]);
+	const int* word2 = &(key2->word[0]);
+	//~ cudaPointerAttributes attr;
+    //~ cudaPointerGetAttributes( &attr, key1->word.device );
+    //~ print_ptr_attr( attr );
+    //~ cudaPointerGetAttributes( &attr, key1->word.host );
+    //~ print_ptr_attr( attr );
+	uint32_t* d_gen = key1->d_gen;
+	
 	cudaSetDevice(CUDA_DEVICE);
 	uint32_t* d_x;
-	int* d_words;
+	int* d_word1;
+	int* d_word2;
 	int equal;
 	int* d_equal;
-
-	gpuErrchk( cudaMalloc((void**)&d_words, size_word*2 * sizeof(int)) ); // TODO do not reallocate
+	gpuErrchk( cudaMalloc((void**)&d_word1, size_word * sizeof(int)) ); // TODO do not reallocate
+	gpuErrchk( cudaMalloc((void**)&d_word2, size_word * sizeof(int)) ); // TODO do not reallocate
 	gpuErrchk( cudaMalloc((void**)&d_x, size * 2 * sizeof(uint32_t)) ); // TODO do not reallocate
-	gpuErrchk( cudaMalloc((void**)&d_equal, sizeof(int)) );
+	gpuErrchk( cudaMalloc((void**)&d_equal, sizeof(int)) ); // TODO do not reallocate
 
 	dim3 blockInit(32, 4);
 	dim3 gridInit(1, ( nb_gen*2 + blockInit.y-1 )/blockInit.y);
@@ -191,18 +181,22 @@ bool equal_gpu(const int* __restrict__ word1, const int* __restrict__ word2, con
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 
-	gpuErrchk( cudaMemcpy(d_words, word1, size_word * sizeof(int), cudaMemcpyHostToDevice) );
-	gpuErrchk( cudaMemcpy(d_words+size_word, word2, size_word * sizeof(int), cudaMemcpyHostToDevice) );
+	//~ key1->word.copyHostToDevice();
+	//~ key2->word.copyHostToDevice();
+	gpuErrchk( cudaMemcpy(d_word1, word1, size_word * sizeof(int), cudaMemcpyHostToDevice) );
+	gpuErrchk( cudaMemcpy(d_word2, word2, size_word * sizeof(int), cudaMemcpyHostToDevice) );
 
 	dim3 block(128, 1);
 	dim3 grid((size + block.x-1)/block.x, 1);
-		equal_kernel<<<grid, block>>>(d_x, d_gen, d_words, d_equal, size, size_word, nb_gen);
+		//~ equal_kernel<<<grid, block>>>(d_x, d_gen, key1->word.device, key2->word.device, d_equal, size, size_word, nb_gen);
+		equal_kernel<<<grid, block>>>(d_x, d_gen, d_word1, d_word2, d_equal, size, size_word, nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 	gpuErrchk( cudaMemcpy(&equal, d_equal, sizeof(int), cudaMemcpyDeviceToHost) );
 
 	gpuErrchk( cudaFree(d_x) );
-	gpuErrchk( cudaFree(d_words) );
+	gpuErrchk( cudaFree(d_word1) );
+	gpuErrchk( cudaFree(d_word2) );
 	gpuErrchk( cudaFree(d_equal) );
 	bool out = (equal == size) ? true:false;
 	

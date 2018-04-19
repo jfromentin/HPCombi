@@ -31,44 +31,11 @@
 #include <chrono>
 
 #include <iotools.hpp>
-#include "vector_gpu.cuh"
+
 
 using namespace std;
 using namespace HPCombi;
 using namespace std::chrono;
-
-void hash_cpu(const uint32_t* __restrict__ x, uint64_t* hashed, const int size, const int nb_vect) {
-  const uint64_t prime = 0x9e3779b97f4a7bb9;
-  uint64_t tmp;
-  __int128 v0;
-  __int128 v1;
-  for(int k=0; k<nb_vect; k++){
-    tmp=x[k*size];
-    for(int i=1; i<size; i++){
-      v0 = (__int128)x[i + k*size];
-      v1 = (__int128)tmp;
-      tmp += ((v1 * prime + v0) * prime) >> 64;
-    }
-    hashed[k] = tmp;
-  }
-}
-
-
-#define HASH_SIZE 100000
-#define NODE 50
-#define NB_GEN 6
-#define SIZE 16
-#define BLOCK_SIZE 4
-
-void print_word(std::array<int, NODE> word);
-
-struct key
-{  
-  uint64_t hashed;
-  std::array<int, NODE> word;
-  uint32_t* d_gen;
-};
-
 
 struct eqstr
 {  
@@ -79,8 +46,8 @@ struct eqstr
   int nb_gen=NB_GEN;
   bool operator()(const key key1, const key key2) const
   {
-    //~ return (key1.hashed == key2.hashed) && (equal_gpu(&(key1.word[0]), &(key2.word[0]), key2.d_gen, block_size, size, size_word, nb_gen));
-    return key1.hashed == key2.hashed;
+    return (key1.hashed == key2.hashed) && (equal_gpu(&key1, &key2, block_size, size, size_word, nb_gen));
+    //~ return key1.hashed == key2.hashed;
   }
 };
 
@@ -98,8 +65,6 @@ int main() {
   const int size = SIZE;
   int block_size = BLOCK_SIZE;
   const int nb_gen = NB_GEN;
-  //~ const int node = 50;
-
 
   uint32_t* gen = (uint32_t*)malloc(size*nb_gen * sizeof(uint32_t));
   for(int i=0; i<size*nb_gen; i++){
@@ -135,10 +100,10 @@ int main() {
   //~ gen[5*size + 7] = 6;
   //~ gen[5*size + 8] = 9;
   //~ gen[5*size + 9] = 8;
-  //~ gen[6*size + 6] = 8;
-  //~ gen[6*size + 7] = 9;
-  //~ gen[6*size + 8] = 6;
-  //~ gen[6*size + 9] = 7;
+  //~ gen[6*size + 6] = 7;
+  //~ gen[6*size + 7] = 6;
+  //~ gen[6*size + 8] = 9;
+  //~ gen[6*size + 9] = 8;
 const PTransf16 s0  {0, 1, 2, 3, 4, 5, 6, 8, 7, 9,10,11,12,13,14,15};
 const PTransf16 s1e {0, 1, 2, 3, 4, 5, 7, 6, 9, 8,10,11,12,13,14,15};
 const PTransf16 s1f {0, 1, 2, 3, 4, 5, 8, 9, 6, 7,10,11,12,13,14,15};
@@ -152,74 +117,66 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   uint32_t* d_gen;
   malloc_gen(&d_gen, gen, size, nb_gen);
 
-
   google::dense_hash_map< key, std::array<int, NODE>, hash_gpu_class, eqstr> elems(5000);
 
   Vector_cpugpu<int> todo, newtodo;
   Vector_gpu<uint32_t> d_x(8192);
   Vector_cpugpu<uint64_t> hashed(1024);
-  //~ vector< std::array<int, NODE> > todo, newtodo;
   std::array<int, NODE> empty_word;
   empty_word.fill(-10);
   
   key empty_key;
   empty_key.hashed = -1;
   empty_key.word = empty_word;
+  //~ empty_key.word.push_back(&(empty_word[0]), NODE);
   empty_key.d_gen = d_gen;
   
   elems.set_empty_key(empty_key);
 
   uint64_t hashedId;
   hash_id_gpu(&hashedId, block_size, size);
-  //~ printf("hash : %lu\n", hashedId);
   std::array<int, NODE> id_word;
   id_word.fill(-1);
-  //~ todo.push_back(id_word);
   todo.push_back(&(id_word[0]), NODE);
     
   key id_key;
   id_key.hashed = hashedId;
   id_key.word = id_word;
+  //~ id_key.word.push_back(&(id_word[0]), NODE);
   id_key.d_gen = d_gen;
-  //~ printf("Insert ID\n");
   elems.insert({ id_key, id_word});
 
 
-double timeGpu;  
-auto tstartGpu = high_resolution_clock::now(); 
+double timeGpu;
+auto tstartGpu = high_resolution_clock::now();
 
   for(int i=0; i<NODE; i++){
-    newtodo.clear();
-    //~ uint64_t* hashed = (uint64_t*)malloc(todo.size/NODE*nb_gen * sizeof(uint64_t)); // Todo use of vector
-    //~ hpcombi_gpu(&(todo[0][0]), d_gen, hashed, block_size, size, NODE, todo.size/NODE, nb_gen);    
+    newtodo.clear(); 
     hashed.resize(todo.size/NODE*nb_gen, 1);
     hpcombi_gpu(&todo, &d_x, d_gen, &hashed, block_size, size, NODE, nb_gen);
     
-    for(int j=0; j<todo.size/NODE*nb_gen; j++){
-      //~ std::array<int, NODE> newWord = todo[j/nb_gen];        
+    for(int j=0; j<todo.size/NODE*nb_gen; j++){       
       std::array<int, NODE> newWord;
       for(int k=0; k<NODE; k++)
-        newWord[k] = todo.host[(j/nb_gen)*NODE + k];        
+        newWord[k] = todo.host[(j/nb_gen)*NODE + k];    
       newWord[i] = j%nb_gen;
       //~ print_word(newWord);
       key new_key;
       new_key.hashed = hashed.host[j];
       new_key.word = newWord;
+      //~ new_key.word.push_back(&(newWord[0]), NODE);
       new_key.d_gen = d_gen;
       if(elems.insert({ new_key, newWord}).second){
-        //~ newtodo.push_back(newWord);
         newtodo.push_back(&(newWord[0]), NODE);
+        //~ print_word(newWord);
       }
       else{
       }
     }
 
-    //~ free(hashed);
-    //~ std::swap(todo, newtodo);
     todo.swap(&newtodo);
     cout << i << ", todo = " << todo.size/NODE << ", elems = " << elems.size()
          << ", #Bucks = " << elems.bucket_count() << endl;
-    //~ cout << todo.capacity() << endl;
     if(todo.size/NODE == 0)
       break;
   }

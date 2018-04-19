@@ -34,7 +34,6 @@ Vector_cpugpu<T>::~Vector_cpugpu(){
 
 template <typename T>
 void Vector_cpugpu<T>::realloc(){
-	//~ printf("Resizing, %lu\n", capacity);
 	T* oldHost = host;
 	T* oldDevice = device;
 	gpuErrchk( cudaMallocHost((void**)&host, capacity * sizeof(T)) );
@@ -46,6 +45,7 @@ void Vector_cpugpu<T>::realloc(){
 	gpuErrchk( cudaFree(oldDevice) );
 	oldHost = NULL;
 	oldDevice = NULL;
+
 }
 
 template <typename T>
@@ -71,17 +71,18 @@ void Vector_cpugpu<T>::resize(size_t newCapacity, int force){
 			capacity *= 2;
 		realloc();
 	}
+	//~ printf("Resizing, %lu, capacity : %lu\n", newCapacity, capacity);
 	if(force == 1)
 		size = newCapacity;
 }
 
 template <typename T>
-void Vector_cpugpu<T>::copyHostToDevice(){
+void Vector_cpugpu<T>::copyHostToDevice() const {
 	gpuErrchk( cudaMemcpy(device, host, size * sizeof(T), cudaMemcpyHostToDevice) );
 }
 
 template <typename T>
-void Vector_cpugpu<T>::copyDeviceToHost(){
+void Vector_cpugpu<T>::copyDeviceToHost() const {
 	gpuErrchk( cudaMemcpy(host, device, size * sizeof(T), cudaMemcpyDeviceToHost) );
 }
 
@@ -115,6 +116,13 @@ void Vector_cpugpu<T>::swap(Vector_cpugpu<T>* other){
 	tmpP = NULL;
 }
 
+template <typename T>
+void Vector_cpugpu<T>::print() const{
+	for(int i=0; i<size; i++)
+		std::cout << host[i] << "|";
+	std::cout << std::endl;
+}
+
 
 
 //########################################################
@@ -140,7 +148,6 @@ Vector_gpu<T>::~Vector_gpu(){
 
 template <typename T>
 void Vector_gpu<T>::realloc(){
-	//~ printf("Resizing, %lu\n", capacity);
 	T* oldDevice = device;
 	gpuErrchk( cudaMalloc((void**)&device, capacity * sizeof(T)) );
 	gpuErrchk( cudaFree(oldDevice) );

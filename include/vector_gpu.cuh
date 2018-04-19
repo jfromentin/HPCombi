@@ -17,10 +17,11 @@ class Vector_cpugpu {
 		void push_back(T new_elem);	
 		void push_back(T* new_array, size_t size_array);
 		void resize(size_t newCapacity, int force=0);
-		void copyHostToDevice();	
-		void copyDeviceToHost();
+		void copyHostToDevice() const;	
+		void copyDeviceToHost() const;
 		void clear();
 		void swap(Vector_cpugpu<T>* other);
+		void print() const;
 };
 
 // Explicit instentiation

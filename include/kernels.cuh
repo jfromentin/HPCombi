@@ -15,7 +15,7 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
 
 __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const int size, const int nb_vect);
 __global__ void initId_kernel(uint32_t * __restrict__ d_x, const int size, const int nb_vect);
-__global__ void equal_kernel(uint32_t* __restrict__ d_x, const int* __restrict__ d_words, int* d_equal, const int size, const int size_word, const int nb_gen);
+__global__ void equal_kernel(uint32_t* __restrict__ d_x, const int* __restrict__ d_word1, const int* __restrict__ d_word2, int* d_equal, const int size, const int size_word, const int nb_gen);
 
 
 
@@ -106,7 +106,7 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
 
 
 
-__global__ void equal_kernel(uint32_t* __restrict__ d_x, const uint32_t* __restrict__ d_gen, const int* __restrict__ d_words, 
+__global__ void equal_kernel(uint32_t* __restrict__ d_x, const uint32_t* __restrict__ d_gen, const int* __restrict__ d_word1, const int* __restrict__ d_word2, 
                               int* d_equal, const int size, const int size_word, const int nb_gen){
   // Global thread id and warp id
   const int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -122,8 +122,8 @@ __global__ void equal_kernel(uint32_t* __restrict__ d_x, const uint32_t* __restr
     d_equal[0] = 0;
   
   for(int j=0; j<size_word; j++){
-    offset_d_gen1 =  d_words[j];
-    offset_d_gen2 =  d_words[j + size_word];
+    offset_d_gen1 =  d_word1[j];
+    offset_d_gen2 =  d_word2[j];
     if(offset_d_gen1 > nb_gen || offset_d_gen2 > nb_gen)
       printf("offset_d_gen : %d, %d\n", offset_d_gen1, offset_d_gen2 );
       for(int coef=0; coef<coefPerThread; coef++){
@@ -202,7 +202,7 @@ __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, cons
       out += __shfl_down(out, offset);
 
   if(lane == 0)
-    d_hashed[tidy] = out;
+    d_hashed[tidy] = out >> 32;
 }
 
 
