@@ -102,8 +102,7 @@ void Vector_cpugpu<T>::swap(Vector_cpugpu<T>* other){
 	
 	tmpP = device;
 	device = other->device;
-	other->device = tmpP;
-	
+	other->device = tmpP;	
 	
 	tmp = capacity;
 	capacity = other->capacity;

@@ -20,8 +20,9 @@ class Vector_cpugpu {
 		void copyHostToDevice() const;	
 		void copyDeviceToHost() const;
 		void clear();
-		void swap(Vector_cpugpu<T>* other);
 		void print() const;
+		void swap(Vector_cpugpu<T>* other);
+		T &operator[](uint64_t i){ return host[i]; }
 };
 
 // Explicit instentiation
