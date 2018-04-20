@@ -60,7 +60,8 @@ struct hash_gpu_class
 };
 
 
-int main() {
+int main(){
+  void cudaSetDevice_cpu();
   using namespace std::chrono;
   const int size = SIZE;
   int block_size = BLOCK_SIZE;
@@ -134,14 +135,15 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   
   elems.set_empty_key(empty_key);
 
-  uint64_t hashedId;
-  hash_id_gpu(&hashedId, block_size, size);
+  //~ uint64_t hashedId;
+  hashed.resize(1, 1);
+  hash_id_gpu(&hashed, &d_x, block_size, size);
   std::array<int, NODE> id_word;
   id_word.fill(-1);
   todo.push_back(&(id_word[0]), NODE);
     
   key id_key;
-  id_key.hashed = hashedId;
+  id_key.hashed = hashed[0];
   id_key.word = id_word;
   //~ id_key.word.push_back(&(id_word[0]), NODE);
   id_key.d_gen = d_gen;

@@ -10,10 +10,12 @@
 
 #include "fonctions_gpu.cuh"
 
+void cudaSetDevice_cpu(){ cudaSetDevice(CUDA_DEVICE); }
+
 void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, Vector_gpu<uint32_t>* d_y, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
 				int block_size, const int size, const int size_word, const int nb_gen){
 	//~ cudaProfilerStart();
-	cudaSetDevice(CUDA_DEVICE);
+	//~ cudaSetDevice(CUDA_DEVICE);
 	float timer;
 	int nb_words = words->size/size_word;
 
@@ -77,7 +79,7 @@ bool equal_gpu(const key* key1, const key* key2, int block_size, const int size,
     //~ print_ptr_attr( attr );
 	uint32_t* d_gen = key1->d_gen;
 	
-	cudaSetDevice(CUDA_DEVICE);
+	//~ cudaSetDevice(CUDA_DEVICE);
 	uint32_t* d_x;
 	int* d_word1;
 	int* d_word2;
@@ -116,33 +118,26 @@ bool equal_gpu(const key* key1, const key* key2, int block_size, const int size,
 	return out;
 }
 
-void hash_id_gpu(uint64_t* hashed, int block_size, const int size){
-	cudaSetDevice(CUDA_DEVICE);
-	uint32_t* d_x;
-	uint64_t* d_hashed;	
-
-	gpuErrchk( cudaMalloc((void**)&d_x, size * sizeof(uint32_t)) );
-	gpuErrchk( cudaMalloc((void**)&d_hashed, 1 * sizeof(uint64_t)) );
-
+void hash_id_gpu(Vector_cpugpu<uint64_t>* hashed, Vector_gpu<uint32_t>* d_x, int block_size, const int size){
+	//~ cudaSetDevice(CUDA_DEVICE);
+	d_x->resize(size);
+	
 	dim3 blockInit(32, 4);
 	dim3 gridInit(1, ( 1 + blockInit.y-1 )/blockInit.y);
-		initId_kernel<<<gridInit, blockInit>>>(d_x, size, 1);
+		initId_kernel<<<gridInit, blockInit>>>(d_x->device, size, 1);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 
 	dim3 block(32, block_size);
 	dim3 grid(1, (1 + block.y-1)/block.y);
-		hash_kernel<<<grid, block>>>(d_x, d_hashed, size, 1);
+		hash_kernel<<<grid, block>>>(d_x->device, hashed->device, size, 1);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
-	gpuErrchk( cudaMemcpy(hashed, d_hashed, 1 * sizeof(uint64_t), cudaMemcpyDeviceToHost) );
-
-	gpuErrchk( cudaFree(d_x) );
-	gpuErrchk( cudaFree(d_hashed) );
+	hashed->copyDeviceToHost();
 }
 
 void malloc_gen(uint32_t** __restrict__ d_gen, const uint32_t* __restrict__ gen, const int size, const int nb_gen){
-	cudaSetDevice(CUDA_DEVICE);
+	//~ cudaSetDevice(CUDA_DEVICE);
 	gpuErrchk( cudaMalloc((void**)d_gen, size*nb_gen * sizeof(uint32_t)) );
 	gpuErrchk( cudaMemcpy(*d_gen, gen, size*nb_gen * sizeof(uint32_t), cudaMemcpyHostToDevice) );	
 }
