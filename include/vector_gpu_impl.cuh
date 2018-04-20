@@ -34,6 +34,7 @@ Vector_cpugpu<T>::~Vector_cpugpu(){
 
 template <typename T>
 void Vector_cpugpu<T>::realloc(){
+	//~ printf("Realloc : %lu\n", capacity);
 	T* oldHost = host;
 	T* oldDevice = device;
 	gpuErrchk( cudaMallocHost((void**)&host, capacity * sizeof(T)) );
@@ -147,6 +148,7 @@ Vector_gpu<T>::~Vector_gpu(){
 
 template <typename T>
 void Vector_gpu<T>::realloc(){
+	//~ printf("Realloc : %lu\n", capacity);
 	T* oldDevice = device;
 	gpuErrchk( cudaMalloc((void**)&device, capacity * sizeof(T)) );
 	gpuErrchk( cudaFree(oldDevice) );

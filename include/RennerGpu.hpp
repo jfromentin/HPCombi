@@ -4,8 +4,8 @@
 
 #define HASH_SIZE 100000
 #define NODE 50
-#define NB_GEN 6
-#define SIZE 16
+#define NB_GEN 7
+#define SIZE 10000
 #define BLOCK_SIZE 4
 
 void print_word(std::array<int, NODE> word);

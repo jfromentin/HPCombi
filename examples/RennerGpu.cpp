@@ -101,10 +101,10 @@ int main(){
   //~ gen[5*size + 7] = 6;
   //~ gen[5*size + 8] = 9;
   //~ gen[5*size + 9] = 8;
-  //~ gen[6*size + 6] = 7;
-  //~ gen[6*size + 7] = 6;
-  //~ gen[6*size + 8] = 9;
-  //~ gen[6*size + 9] = 8;
+  gen[6*size + 6] = 7;
+  gen[6*size + 7] = 6;
+  gen[6*size + 8] = 9;
+  gen[6*size + 9] = 8;
 const PTransf16 s0  {0, 1, 2, 3, 4, 5, 6, 8, 7, 9,10,11,12,13,14,15};
 const PTransf16 s1e {0, 1, 2, 3, 4, 5, 7, 6, 9, 8,10,11,12,13,14,15};
 const PTransf16 s1f {0, 1, 2, 3, 4, 5, 8, 9, 6, 7,10,11,12,13,14,15};
@@ -120,10 +120,11 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
 
   google::dense_hash_map< key, std::array<int, NODE>, hash_gpu_class, eqstr> elems(5000);
 
-  Vector_cpugpu<int> todo, newtodo;
-  Vector_gpu<uint32_t> d_x(8192);
-  Vector_gpu<uint32_t> d_y(8192);
-  Vector_cpugpu<uint64_t> hashed(1024);
+  Vector_cpugpu<int> todo(32768);
+  Vector_cpugpu<int> newtodo(32768);
+  Vector_gpu<uint32_t> d_x(65536);
+  Vector_gpu<uint32_t> d_y(65536);
+  Vector_cpugpu<uint64_t> hashed(8192);
   std::array<int, NODE> empty_word;
   empty_word.fill(-10);
   

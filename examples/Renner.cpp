@@ -74,7 +74,7 @@ const PTransf16 genf {FF,FF,FF,FF,FF,FF,FF, 7,FF, 9,10,11,12,13,14,15};
 
 // const vector<PTransf16> gens {gene, genf, s1e, s1f};
 //~ const vector<PTransf16> gens{gene, genf, s1e, s1f, s2, s3};
-const vector<PTransf16> gens{s2, s3, s4, s5, s6, s7};
+const vector<PTransf16> gens{s2, s3, s4, s5, s6, s7, s1e};
 const int nprint = 6;
 
 

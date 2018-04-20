@@ -16,7 +16,7 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, Vector_gp
 				int block_size, const int size, const int size_word, const int nb_gen){
 	//~ cudaProfilerStart();
 	//~ cudaSetDevice(CUDA_DEVICE);
-	float timer;
+	//~ float timer;
 	int nb_words = words->size/size_word;
 
 	d_x->resize(size * nb_words*nb_gen);
@@ -27,8 +27,34 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, Vector_gp
 		initId_kernel<<<gridInit, blockInit>>>(d_x->device, size, nb_words*nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
-
 	words->copyHostToDevice();
+
+	//~ cudaEvent_t start, stop;
+	//~ cudaEventCreate(&start);
+	//~ cudaEventCreate(&stop);
+	int threadPerPerm = 1024;
+	int size_block;
+	int size_grid;
+	for(int i=0; i<10; i++){
+		size_block = 1024/threadPerPerm;
+		size_grid = (nb_words*nb_gen + size_block-1)/size_block;
+		if(threadPerPerm <= size && size_grid <= 65535)
+			break;
+		threadPerPerm /= 2;
+	}
+	//~ printf("threadPerPerm : %d, size_block : %d, size_grid : %d\n", threadPerPerm, size_block, size_grid);
+	dim3 blockPerm(threadPerPerm, size_block);
+	dim3 gridPerm(1, size_grid);
+	//~ cudaEventRecord(start);		
+		permute_all_kernel<<<gridPerm, blockPerm>>>(d_x->device, d_y->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
+	//~ cudaEventRecord(stop);
+	//~ cudaEventSynchronize(stop);
+	//~ cudaEventElapsedTime(&timer, start, stop);
+		
+	gpuErrchk( cudaDeviceSynchronize() );
+	gpuErrchk( cudaPeekAtLastError() );
+
+	
 	for(int i=0; i<5; i++){
 		int gridy = (nb_words*nb_gen + block_size-1)/block_size;		
 		if(gridy > 65535 && block_size < 32){
@@ -39,29 +65,13 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, Vector_gp
 			exit(1);
 		}
 	}
-
-	cudaEvent_t start, stop;
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
-	const int threadPerPerm = 16;
-	dim3 blockPerm(threadPerPerm, 128/threadPerPerm);
-	dim3 gridPerm(1, (nb_words*nb_gen + blockPerm.y-1)/blockPerm.y);
-	cudaEventRecord(start);		
-		permute_all_kernel<<<gridPerm, blockPerm>>>(d_x->device, d_y->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&timer, start, stop);
-		
-	gpuErrchk( cudaDeviceSynchronize() );
-	gpuErrchk( cudaPeekAtLastError() );
-
 	dim3 blockHash(32, block_size);
 	dim3 gridHash(1, (nb_words*nb_gen + blockHash.y-1)/blockHash.y);
-	cudaEventRecord(start);
+	//~ cudaEventRecord(start);
 		hash_kernel<<<gridHash, blockHash>>>(d_x->device, hashed->device, size, nb_words*nb_gen);		
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&timer, start, stop);
+	//~ cudaEventRecord(stop);
+	//~ cudaEventSynchronize(stop);
+	//~ cudaEventElapsedTime(&timer, start, stop);
 	
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
