@@ -6,16 +6,19 @@
 #include <iostream>
 #include <type_traits>
 #include <typeinfo>
+#include <cuda_profiler_api.h>
 
 #include "fonctions_gpu.cuh"
 
-void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
+void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, Vector_gpu<uint32_t>* d_y, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
 				int block_size, const int size, const int size_word, const int nb_gen){
+	//~ cudaProfilerStart();
 	cudaSetDevice(CUDA_DEVICE);
 	float timer;
 	int nb_words = words->size/size_word;
 
 	d_x->resize(size * nb_words*nb_gen);
+	d_y->resize(size * nb_words*nb_gen);
 
 	dim3 blockInit(32, 4);
 	dim3 gridInit(1, ( nb_words*nb_gen + blockInit.y-1 )/blockInit.y);
@@ -38,20 +41,22 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, const uin
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
-
-	dim3 block(32, block_size);
-	dim3 grid(1, (nb_words*nb_gen + block.y-1)/block.y);
+	const int threadPerPerm = 16;
+	dim3 blockPerm(threadPerPerm, 128/threadPerPerm);
+	dim3 gridPerm(1, (nb_words*nb_gen + blockPerm.y-1)/blockPerm.y);
 	cudaEventRecord(start);		
-		permute_all_kernel<<<grid, block>>>(d_x->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
+		permute_all_kernel<<<gridPerm, blockPerm>>>(d_x->device, d_y->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&timer, start, stop);
 		
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
-	
+
+	dim3 blockHash(32, block_size);
+	dim3 gridHash(1, (nb_words*nb_gen + blockHash.y-1)/blockHash.y);
 	cudaEventRecord(start);
-		hash_kernel<<<grid, block>>>(d_x->device, hashed->device, size, nb_words*nb_gen);		
+		hash_kernel<<<gridHash, blockHash>>>(d_x->device, hashed->device, size, nb_words*nb_gen);		
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);
 	cudaEventElapsedTime(&timer, start, stop);
@@ -59,6 +64,7 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, const uin
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 	hashed->copyDeviceToHost();
+	//~ cudaProfilerStop();
 }
 
 bool equal_gpu(const key* key1, const key* key2, int block_size, const int size, const int size_word, const int nb_gen){

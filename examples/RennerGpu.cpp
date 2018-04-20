@@ -46,8 +46,8 @@ struct eqstr
   int nb_gen=NB_GEN;
   bool operator()(const key key1, const key key2) const
   {
-    return (key1.hashed == key2.hashed) && (equal_gpu(&key1, &key2, block_size, size, size_word, nb_gen));
-    //~ return key1.hashed == key2.hashed;
+    //~ return (key1.hashed == key2.hashed) && (equal_gpu(&key1, &key2, block_size, size, size_word, nb_gen));
+    return key1.hashed == key2.hashed;
   }
 };
 
@@ -121,6 +121,7 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
 
   Vector_cpugpu<int> todo, newtodo;
   Vector_gpu<uint32_t> d_x(8192);
+  Vector_gpu<uint32_t> d_y(8192);
   Vector_cpugpu<uint64_t> hashed(1024);
   std::array<int, NODE> empty_word;
   empty_word.fill(-10);
@@ -153,7 +154,7 @@ auto tstartGpu = high_resolution_clock::now();
   for(int i=0; i<NODE; i++){
     newtodo.clear(); 
     hashed.resize(todo.size/NODE*nb_gen, 1);
-    hpcombi_gpu(&todo, &d_x, d_gen, &hashed, block_size, size, NODE, nb_gen);
+    hpcombi_gpu(&todo, &d_x, &d_y, d_gen, &hashed, block_size, size, NODE, nb_gen);
     
     for(int j=0; j<todo.size/NODE*nb_gen; j++){       
       std::array<int, NODE> newWord;

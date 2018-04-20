@@ -12,33 +12,80 @@ __global__ void initId_kernel(uint32_t * __restrict__ d_x, const int size, const
 __global__ void equal_kernel(uint32_t* __restrict__ d_x, const int* __restrict__ d_word1, const int* __restrict__ d_word2, int* d_equal, const int size, const int size_word, const int nb_gen);
 
 
-__global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* __restrict__ d_gen, const int* __restrict__ d_words, 
+//~ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* __restrict__ d_gen, const int* __restrict__ d_words, 
+                              //~ const int size, const int nb_words, const int size_word, const int nb_gen){
+  //~ const int tidy = blockIdx.y * blockDim.y + threadIdx.y;
+  //~ const int lane = threadIdx.x;
+  //~ const int coefPerThread = (size+warpSize-1) / warpSize;
+  //~ const int offset_d_x =  tidy * size;
+  //~ int offset_d_gen;
+  //~ int index;
+  
+  //~ if(tidy/nb_gen<nb_words){
+    //~ for(int j=0; j<size_word; j++){
+      //~ offset_d_gen =  d_words[j + (tidy/nb_gen) * size_word];
+      //~ if(offset_d_gen > -1){
+        //~ for(int coef=0; coef<coefPerThread; coef++){
+          //~ index = lane + warpSize * coef;
+          //~ if (index < size){
+            //~ d_x[index + offset_d_x] = d_x[ d_gen[index + offset_d_gen * size] + offset_d_x];
+          //~ }
+        //~ }
+      //~ }
+    //~ }
+    //~ for(int coef=0; coef<coefPerThread; coef++){
+      //~ index = lane + warpSize * coef;
+      //~ if (index < size){
+        //~ d_x[index + offset_d_x] = d_x[ d_gen[index + (tidy%nb_gen) * size] + offset_d_x];
+      //~ }
+    //~ }
+  //~ }
+//~ }
+
+__global__ void permute_all_kernel(uint32_t* __restrict__ d_x, uint32_t* __restrict__ d_y, const uint32_t* __restrict__ d_gen, const int* __restrict__ d_words, 
                               const int size, const int nb_words, const int size_word, const int nb_gen){
-  const int tidy = blockIdx.y * blockDim.y + threadIdx.y;
-  const int lane = threadIdx.x;
-  const int coefPerThread = (size+warpSize-1) / warpSize;
+  const int tidy = blockIdx.y*blockDim.y + threadIdx.y;
+  const int wordId = tidy/nb_gen;
+  const int coefPerThread = (size + blockDim.x-1) / blockDim.x;
   const int offset_d_x =  tidy * size;
   int offset_d_gen;
   int index;
-  
-  if(tidy/nb_gen<nb_words){
+  if(wordId < nb_words){
     for(int j=0; j<size_word; j++){
-      offset_d_gen =  d_words[j + (tidy/nb_gen) * size_word];
+      offset_d_gen =  d_words[j + wordId * size_word];
       if(offset_d_gen > -1){
+        
         for(int coef=0; coef<coefPerThread; coef++){
-          index = lane + warpSize * coef;
+          index = threadIdx.x + blockDim.x*coef;
           if (index < size){
-            d_x[index + offset_d_x] = d_x[ d_gen[index + offset_d_gen * size] + offset_d_x];
+            d_y[index + offset_d_x] = d_x[ d_gen[index + offset_d_gen*size] + offset_d_x];
           }
         }
+        __syncthreads();
+        for(int coef=0; coef<coefPerThread; coef++){
+          index = threadIdx.x + blockDim.x*coef;
+          if (index < size){
+            d_x[index + offset_d_x] = d_y[index + offset_d_x];
+          }
+        }
+        
       }
     }
+    
     for(int coef=0; coef<coefPerThread; coef++){
-      index = lane + warpSize * coef;
+      index = threadIdx.x + blockDim.x * coef;
       if (index < size){
-        d_x[index + offset_d_x] = d_x[ d_gen[index + (tidy%nb_gen) * size] + offset_d_x];
+        d_y[index + offset_d_x] = d_x[d_gen[index + (tidy%nb_gen)*size] + offset_d_x];
       }
     }
+    __syncthreads();
+    for(int coef=0; coef<coefPerThread; coef++){
+      index = threadIdx.x + blockDim.x * coef;
+      if (index < size){
+        d_x[index + offset_d_x] = d_y[ index + offset_d_x];
+      }
+    }
+    
   }
 }
 
