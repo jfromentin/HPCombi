@@ -13,7 +13,7 @@
 void cudaSetDevice_cpu(){ cudaSetDevice(CUDA_DEVICE); }
 
 void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, Vector_gpu<uint32_t>* d_y, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
-				int block_size, const int size, const int size_word, const int nb_gen){
+				const int size, const int size_word, const int nb_gen){
 	//~ cudaProfilerStart();
 	//~ cudaSetDevice(CUDA_DEVICE);
 	//~ float timer;
@@ -54,18 +54,20 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, Vector_gp
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 
-	
+	int gridy;
+	int size_block_hash = 32;
+	int block_size = 4;
 	for(int i=0; i<5; i++){
-		int gridy = (nb_words*nb_gen + block_size-1)/block_size;		
-		if(gridy > 65535 && block_size < 32){
-			block_size *= 2;
-		}
-		else if(gridy > 65535){
-			printf("To much words (%d)\n", gridy);
-			exit(1);
-		}
+		if(size_block_hash <= size)
+			break;
+		size_block_hash /= 2;
 	}
-	dim3 blockHash(32, block_size);
+	for(int i=0; i<5; i++){
+		gridy = (nb_words*nb_gen + block_size-1)/block_size;		
+		if(gridy > 65535 && block_size*size_block_hash < 1024)
+			block_size *= 2;
+	}
+	dim3 blockHash(size_block_hash, block_size);
 	dim3 gridHash(1, (nb_words*nb_gen + blockHash.y-1)/blockHash.y);
 	//~ cudaEventRecord(start);
 		hash_kernel<<<gridHash, blockHash>>>(d_x->device, hashed->device, size, nb_words*nb_gen);		

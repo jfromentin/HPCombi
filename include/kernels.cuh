@@ -128,23 +128,22 @@ __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, cons
   // A warp computes a hash.
 
   const int tidy = blockIdx.y * blockDim.y + threadIdx.y;
-  const int lane = threadIdx.x;
-  const int coefPerThread = (size+warpSize-1) / warpSize;
+  const int coefPerThread = (size+blockDim.x-1) / blockDim.x;
   const uint64_t prime = 0x9e3779b97f4a7bb9;
   uint64_t out=1;
   uint64_t coef=0;
     
-  for (int j=0; j<coefPerThread*lane; j++)
+  for (int j=0; j<coefPerThread*threadIdx.x; j++)
     out *= prime;
-  if(lane + warpSize * 0 < size && tidy < nb_vect){
-    out *= d_x[tidy * size + lane + warpSize * 0];
+  if(threadIdx.x + blockDim.x * 0 < size && tidy < nb_vect){
+    out *= d_x[tidy * size + threadIdx.x + blockDim.x * 0];
   }
   else
     out = 0;
 
   for(int i=1; i<coefPerThread; i++){
-    if(lane + warpSize * i < size && tidy < nb_vect)
-      coef = d_x[tidy * size + lane + warpSize * i];
+    if(threadIdx.x + blockDim.x * i < size && tidy < nb_vect)
+      coef = d_x[tidy * size + threadIdx.x + blockDim.x * i];
 
     out += coef;
     out *= prime;
@@ -153,10 +152,10 @@ __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, cons
     }
 
   // Reduction
-  for (int offset = warpSize/2; offset > 0; offset /= 2) 
+  for (int offset = blockDim.x/2; offset > 0; offset /= 2) 
       out += __shfl_down(out, offset);
 
-  if(lane == 0)
+  if(threadIdx.x == 0)
     d_hashed[tidy] = out >> 32;
 }
 

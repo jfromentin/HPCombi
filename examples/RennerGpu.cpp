@@ -101,10 +101,10 @@ int main(){
   //~ gen[5*size + 7] = 6;
   //~ gen[5*size + 8] = 9;
   //~ gen[5*size + 9] = 8;
-  gen[6*size + 6] = 7;
-  gen[6*size + 7] = 6;
-  gen[6*size + 8] = 9;
-  gen[6*size + 9] = 8;
+  //~ gen[6*size + 6] = 7;
+  //~ gen[6*size + 7] = 6;
+  //~ gen[6*size + 8] = 9;
+  //~ gen[6*size + 9] = 8;
 const PTransf16 s0  {0, 1, 2, 3, 4, 5, 6, 8, 7, 9,10,11,12,13,14,15};
 const PTransf16 s1e {0, 1, 2, 3, 4, 5, 7, 6, 9, 8,10,11,12,13,14,15};
 const PTransf16 s1f {0, 1, 2, 3, 4, 5, 8, 9, 6, 7,10,11,12,13,14,15};
@@ -157,7 +157,7 @@ auto tstartGpu = high_resolution_clock::now();
   for(int i=0; i<NODE; i++){
     newtodo.clear(); 
     hashed.resize(todo.size/NODE*nb_gen, 1);
-    hpcombi_gpu(&todo, &d_x, &d_y, d_gen, &hashed, block_size, size, NODE, nb_gen);
+    hpcombi_gpu(&todo, &d_x, &d_y, d_gen, &hashed, size, NODE, nb_gen);
     
     for(int j=0; j<todo.size/NODE*nb_gen; j++){       
       std::array<int, NODE> newWord;
