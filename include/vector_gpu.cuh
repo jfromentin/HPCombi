@@ -28,6 +28,7 @@ class Vector_cpugpu {
 // Explicit instentiation
 template class Vector_cpugpu<int>;
 template class Vector_cpugpu<uint64_t>;
+template class Vector_cpugpu<int8_t>;
 
 
 template <typename T>

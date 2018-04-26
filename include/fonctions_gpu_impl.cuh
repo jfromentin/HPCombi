@@ -12,8 +12,8 @@
 
 void cudaSetDevice_cpu(){ cudaSetDevice(CUDA_DEVICE); }
 
-void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, Vector_gpu<uint32_t>* d_y, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
-				const int size, const int size_word, const int nb_gen){
+void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, Vector_gpu<uint32_t>* d_y, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
+				const int size, const int size_word, const int8_t nb_gen){
 	//~ cudaProfilerStart();
 	//~ cudaSetDevice(CUDA_DEVICE);
 	//~ float timer;
@@ -81,9 +81,9 @@ void hpcombi_gpu(Vector_cpugpu<int>* words, Vector_gpu<uint32_t>* d_x, Vector_gp
 	//~ cudaProfilerStop();
 }
 
-bool equal_gpu(const key* key1, const key* key2, int block_size, const int size, const int size_word, const int nb_gen){
-	const int* word1 = &(key1->word[0]);
-	const int* word2 = &(key2->word[0]);
+bool equal_gpu(const key* key1, const key* key2, int block_size, const int size, const int size_word, const int8_t nb_gen){
+	const int8_t* word1 = &(key1->word[0]);
+	const int8_t* word2 = &(key2->word[0]);
 	//~ cudaPointerAttributes attr;
     //~ cudaPointerGetAttributes( &attr, key1->word.device );
     //~ print_ptr_attr( attr );
@@ -92,40 +92,32 @@ bool equal_gpu(const key* key1, const key* key2, int block_size, const int size,
 	uint32_t* d_gen = key1->d_gen;
 	
 	//~ cudaSetDevice(CUDA_DEVICE);
-	uint32_t* d_x;
-	int* d_word1;
-	int* d_word2;
-	int equal;
-	int* d_equal;
-	gpuErrchk( cudaMalloc((void**)&d_word1, size_word * sizeof(int)) ); // TODO do not reallocate
-	gpuErrchk( cudaMalloc((void**)&d_word2, size_word * sizeof(int)) ); // TODO do not reallocate
-	gpuErrchk( cudaMalloc((void**)&d_x, size * 2 * sizeof(uint32_t)) ); // TODO do not reallocate
-	gpuErrchk( cudaMalloc((void**)&d_equal, sizeof(int)) ); // TODO do not reallocate
+	int8_t* d_word1;
+	int8_t* d_word2;
+	gpuErrchk( cudaMalloc((void**)&d_word1, size_word * sizeof(int8_t)) ); // TODO do not reallocate
+	gpuErrchk( cudaMalloc((void**)&d_word2, size_word * sizeof(int8_t)) ); // TODO do not reallocate
 
 	dim3 blockInit(32, 4);
 	dim3 gridInit(1, ( nb_gen*2 + blockInit.y-1 )/blockInit.y);
-		initId_kernel<<<gridInit, blockInit>>>(d_x, size, nb_gen*2);
+		initId_kernel<<<gridInit, blockInit>>>(key1->d_x->device, size, nb_gen*2);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 
 	//~ key1->word.copyHostToDevice();
 	//~ key2->word.copyHostToDevice();
-	gpuErrchk( cudaMemcpy(d_word1, word1, size_word * sizeof(int), cudaMemcpyHostToDevice) );
-	gpuErrchk( cudaMemcpy(d_word2, word2, size_word * sizeof(int), cudaMemcpyHostToDevice) );
+	gpuErrchk( cudaMemcpy(d_word1, word1, size_word * sizeof(int8_t), cudaMemcpyHostToDevice) );
+	gpuErrchk( cudaMemcpy(d_word2, word2, size_word * sizeof(int8_t), cudaMemcpyHostToDevice) );
 
 	dim3 block(128, 1);
 	dim3 grid((size + block.x-1)/block.x, 1);
-		//~ equal_kernel<<<grid, block>>>(d_x, d_gen, key1->word.device, key2->word.device, d_equal, size, size_word, nb_gen);
-		equal_kernel<<<grid, block>>>(d_x, d_gen, d_word1, d_word2, d_equal, size, size_word, nb_gen);
+		equal_kernel<<<grid, block>>>(key1->d_x->device, d_gen, d_word1, d_word2, key1->equal->device, size, size_word, nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
-	gpuErrchk( cudaMemcpy(&equal, d_equal, sizeof(int), cudaMemcpyDeviceToHost) );
+	key1->equal->copyDeviceToHost();
 
-	gpuErrchk( cudaFree(d_x) );
 	gpuErrchk( cudaFree(d_word1) );
 	gpuErrchk( cudaFree(d_word2) );
-	gpuErrchk( cudaFree(d_equal) );
-	bool out = (equal == size) ? true:false;
+	bool out = (key1->equal->host[0] == size) ? true:false;
 	
 	return out;
 }
@@ -148,7 +140,7 @@ void hash_id_gpu(Vector_cpugpu<uint64_t>* hashed, Vector_gpu<uint32_t>* d_x, int
 	hashed->copyDeviceToHost();
 }
 
-void malloc_gen(uint32_t** __restrict__ d_gen, const uint32_t* __restrict__ gen, const int size, const int nb_gen){
+void malloc_gen(uint32_t** __restrict__ d_gen, const uint32_t* __restrict__ gen, const int size, const int8_t nb_gen){
 	//~ cudaSetDevice(CUDA_DEVICE);
 	gpuErrchk( cudaMalloc((void**)d_gen, size*nb_gen * sizeof(uint32_t)) );
 	gpuErrchk( cudaMemcpy(*d_gen, gen, size*nb_gen * sizeof(uint32_t), cudaMemcpyHostToDevice) );	

@@ -7,14 +7,16 @@
 #define NB_GEN 6
 #define SIZE 16
 #define BLOCK_SIZE 4
+#define NB_HASH_FUNC 4
 
-void print_word(std::array<int, NODE> word);
+void print_word(std::array<int8_t, NODE> word);
 
 struct key
 {  
   uint64_t hashed;
-  std::array<int, NODE> word;
-  //~ Vector_cpugpu<int> word;
+  std::array<int8_t, NODE> word;
+  Vector_gpu<uint32_t>* d_x;
+  Vector_cpugpu<int>* equal;
   uint32_t* d_gen;
 };
 

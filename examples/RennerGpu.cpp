@@ -46,8 +46,8 @@ struct eqstr
   int nb_gen=NB_GEN;
   bool operator()(const key key1, const key key2) const
   {
-    //~ return (key1.hashed == key2.hashed) && (equal_gpu(&key1, &key2, block_size, size, size_word, nb_gen));
-    return key1.hashed == key2.hashed;
+    return (key1.hashed == key2.hashed) && (equal_gpu(&key1, &key2, block_size, size, size_word, nb_gen));
+    //~ return key1.hashed == key2.hashed;
   }
 };
 
@@ -65,7 +65,7 @@ int main(){
   using namespace std::chrono;
   const int size = SIZE;
   int block_size = BLOCK_SIZE;
-  const int nb_gen = NB_GEN;
+  const int8_t nb_gen = NB_GEN;
 
   uint32_t* gen = (uint32_t*)malloc(size*nb_gen * sizeof(uint32_t));
   for(int i=0; i<size*nb_gen; i++){
@@ -118,14 +118,16 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   uint32_t* d_gen;
   malloc_gen(&d_gen, gen, size, nb_gen);
 
-  google::dense_hash_map< key, std::array<int, NODE>, hash_gpu_class, eqstr> elems(5000);
+  google::dense_hash_map< key, std::array<int8_t, NODE>, hash_gpu_class, eqstr> elems(5000);
 
-  Vector_cpugpu<int> todo(32768);
-  Vector_cpugpu<int> newtodo(32768);
+  Vector_cpugpu<int8_t> todo(32768);
+  Vector_cpugpu<int8_t> newtodo(32768);
   Vector_gpu<uint32_t> d_x(65536);
   Vector_gpu<uint32_t> d_y(65536);
   Vector_cpugpu<uint64_t> hashed(8192);
-  std::array<int, NODE> empty_word;
+  Vector_cpugpu<int> equal(1);
+  equal.push_back(0);
+  std::array<int8_t, NODE> empty_word;
   empty_word.fill(-10);
   
   key empty_key;
@@ -133,13 +135,15 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   empty_key.word = empty_word;
   //~ empty_key.word.push_back(&(empty_word[0]), NODE);
   empty_key.d_gen = d_gen;
+  empty_key.d_x = &d_x;
+  empty_key.equal = &equal;
   
   elems.set_empty_key(empty_key);
 
   //~ uint64_t hashedId;
-  hashed.resize(1, 1);
+  hashed.resize(1 * NB_HASH_FUNC, 1);
   hash_id_gpu(&hashed, &d_x, block_size, size);
-  std::array<int, NODE> id_word;
+  std::array<int8_t, NODE> id_word;
   id_word.fill(-1);
   todo.push_back(&(id_word[0]), NODE);
     
@@ -148,6 +152,8 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   id_key.word = id_word;
   //~ id_key.word.push_back(&(id_word[0]), NODE);
   id_key.d_gen = d_gen;
+  id_key.d_x = &d_x;
+  id_key.equal = &equal;
   elems.insert({ id_key, id_word});
 
 
@@ -156,20 +162,22 @@ auto tstartGpu = high_resolution_clock::now();
 
   for(int i=0; i<NODE; i++){
     newtodo.clear(); 
-    hashed.resize(todo.size/NODE*nb_gen, 1);
+    hashed.resize(todo.size/NODE*nb_gen * NB_HASH_FUNC, 1);
     hpcombi_gpu(&todo, &d_x, &d_y, d_gen, &hashed, size, NODE, nb_gen);
     
     for(int j=0; j<todo.size/NODE*nb_gen; j++){       
-      std::array<int, NODE> newWord;
+      std::array<int8_t, NODE> newWord;
       for(int k=0; k<NODE; k++)
         newWord[k] = todo.host[(j/nb_gen)*NODE + k];    
       newWord[i] = j%nb_gen;
       //~ print_word(newWord);
       key new_key;
-      new_key.hashed = hashed.host[j];
+      new_key.hashed = hashed[j * NB_HASH_FUNC];
       new_key.word = newWord;
       //~ new_key.word.push_back(&(newWord[0]), NODE);
       new_key.d_gen = d_gen;
+      new_key.d_x = &d_x;
+      new_key.equal = &equal;
       if(elems.insert({ new_key, newWord}).second){
         newtodo.push_back(&(newWord[0]), NODE);
         //~ print_word(newWord);
@@ -199,7 +207,7 @@ auto tstartGpu = high_resolution_clock::now();
 
 
 
-void print_word(std::array<int, NODE> word){
+void print_word(std::array<int8_t, NODE> word){
   for(int i=0; i<NODE; i++)
     if(word[i]>-1)
       printf("%d|", word[i]);
