@@ -92,10 +92,10 @@ bool equal_gpu(const key* key1, const key* key2, int block_size, const int size,
 	uint32_t* d_gen = key1->d_gen;
 	
 	//~ cudaSetDevice(CUDA_DEVICE);
-	int8_t* d_word1;
-	int8_t* d_word2;
-	gpuErrchk( cudaMalloc((void**)&d_word1, size_word * sizeof(int8_t)) ); // TODO do not reallocate
-	gpuErrchk( cudaMalloc((void**)&d_word2, size_word * sizeof(int8_t)) ); // TODO do not reallocate
+	int8_t* d_word1 = key1->d_words;
+	int8_t* d_word2 = key1->d_words + size_word;
+	//~ gpuErrchk( cudaMalloc((void**)&d_word1, size_word * sizeof(int8_t)) ); // TODO do not reallocate
+	//~ gpuErrchk( cudaMalloc((void**)&d_word2, size_word * sizeof(int8_t)) ); // TODO do not reallocate
 
 	dim3 blockInit(32, 4);
 	dim3 gridInit(1, ( nb_gen*2 + blockInit.y-1 )/blockInit.y);
@@ -115,8 +115,8 @@ bool equal_gpu(const key* key1, const key* key2, int block_size, const int size,
 	gpuErrchk( cudaPeekAtLastError() );
 	key1->equal->copyDeviceToHost();
 
-	gpuErrchk( cudaFree(d_word1) );
-	gpuErrchk( cudaFree(d_word2) );
+	//~ gpuErrchk( cudaFree(d_word1) );
+	//~ gpuErrchk( cudaFree(d_word2) );
 	bool out = (key1->equal->host[0] == size) ? true:false;
 	
 	return out;
@@ -146,7 +146,16 @@ void malloc_gen(uint32_t** __restrict__ d_gen, const uint32_t* __restrict__ gen,
 	gpuErrchk( cudaMemcpy(*d_gen, gen, size*nb_gen * sizeof(uint32_t), cudaMemcpyHostToDevice) );	
 }
 
+void malloc_words(int8_t** __restrict__ d_words, const int size){
+	//~ cudaSetDevice(CUDA_DEVICE);
+	gpuErrchk( cudaMalloc((void**)d_words, size*2 * sizeof(uint8_t)) );
+}
+
 void free_gen(uint32_t** __restrict__ d_gen){
 	gpuErrchk( cudaFree(*d_gen) );
+}
+
+void free_words(int8_t** __restrict__ d_words){
+	gpuErrchk( cudaFree(*d_words) );
 }
 #endif  // HPCOMBI_PERM_FONCTIONS_GPU_IMPL_CUH

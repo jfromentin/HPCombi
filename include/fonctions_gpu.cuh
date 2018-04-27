@@ -13,6 +13,8 @@
 	bool equal_gpu(const key* key1, const key* key2, int block_size, const int size, const int size_word, const int8_t nb_gen);
 	void malloc_gen(uint32_t** __restrict__ d_gen, const uint32_t* __restrict__ gen, const int size, const int8_t nb_gen);
 	void free_gen(uint32_t** __restrict__ d_gen);
+	void malloc_words(int8_t** __restrict__ d_words, const int size);
+	void free_words(int8_t** __restrict__ d_words);
 	void cudaSetDevice_cpu();
 
 	// GPU error catching
