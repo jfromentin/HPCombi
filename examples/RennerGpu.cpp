@@ -119,7 +119,7 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   malloc_gen(&d_gen, gen, size, nb_gen);
   malloc_words(&d_words, NODE);
 
-  google::dense_hash_map< key, std::array<int8_t, NODE>, hash_gpu_class, eqstr> elems(5000);
+  google::dense_hash_map< key, std::array<int8_t, NODE>, hash_gpu_class, eqstr> elems(2000);
 
   Vector_cpugpu<int8_t> todo(32768);
   Vector_cpugpu<int8_t> newtodo(32768);

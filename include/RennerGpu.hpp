@@ -5,7 +5,7 @@
 #define HASH_SIZE 100000
 #define NODE 50
 #define NB_GEN 6
-#define SIZE 16
+#define SIZE 150000
 #define BLOCK_SIZE 4
 #define NB_HASH_FUNC 4
 

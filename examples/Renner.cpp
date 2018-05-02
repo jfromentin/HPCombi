@@ -90,7 +90,7 @@ struct eqstr
 
 #ifdef HPCOMBI_HAVE_DENSEHASHMAP
 google::dense_hash_map<PTransf16, std::pair<PTransf16, int>,
-                       hash<PTransf16>, equal_to<PTransf16>> elems(5000);
+                       hash<PTransf16>, equal_to<PTransf16>> elems(2000);
 #else
 unordered_map<PTransf16, std::pair<PTransf16, int>> elems;
 #endif
