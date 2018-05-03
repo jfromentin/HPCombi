@@ -12,7 +12,7 @@
 
 void cudaSetDevice_cpu(){ cudaSetDevice(CUDA_DEVICE); }
 
-void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, Vector_gpu<uint32_t>* d_y, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
+void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
 				const int size, const int size_word, const int8_t nb_gen){
 	//~ cudaProfilerStart();
 	//~ cudaSetDevice(CUDA_DEVICE);
@@ -20,7 +20,6 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, Vector
 	int nb_words = words->size/size_word;
 
 	d_x->resize(size * nb_words*nb_gen);
-	d_y->resize(size * nb_words*nb_gen);
 	
 	words->copyHostToDevice();
 	int threadPerPerm = 1024;
@@ -35,7 +34,7 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, Vector
 	}
 	dim3 blockPerm(threadPerPerm, size_block);
 	dim3 gridPerm(1, size_grid);
-		permute_all_kernel<<<gridPerm, blockPerm>>>(d_x->device, d_y->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
+		permute_all_kernel<<<gridPerm, blockPerm>>>(d_x->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
 		
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
@@ -67,8 +66,6 @@ bool equal_gpu(const key* key1, const key* key2, int block_size, const int size,
 	const int8_t* word1 = &(key1->word[0]);
 	const int8_t* word2 = &(key2->word[0]);
 	uint32_t* d_gen = key1->d_gen;
-	key1->d_x->resize(size * 2);
-	key2->d_x->resize(size * 2);
 	//~ cudaSetDevice(CUDA_DEVICE);
 	int8_t* d_words = key1->d_words;
 	gpuErrchk( cudaMemcpy(d_words, word1, size_word * sizeof(int8_t), cudaMemcpyHostToDevice) );
@@ -78,7 +75,7 @@ bool equal_gpu(const key* key1, const key* key2, int block_size, const int size,
 	//~ dim3 grid((min(size, 16384) + block.x-1)/block.x, 2);
 	//~ dim3 grid((1 + block.x-1)/block.x, 2);
 	dim3 grid((min(size, 16384) + block.x-1)/block.x, 1);
-		equal_kernel<<<grid, block>>>(key1->d_x->device, key2->d_x->device, d_gen, d_words, key1->equal->device, size, size_word, nb_gen);
+		equal_kernel<<<grid, block>>>(d_gen, d_words, key1->equal->device, size, size_word, nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 	key1->equal->copyDeviceToHost();

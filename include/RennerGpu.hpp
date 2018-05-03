@@ -14,19 +14,17 @@ void print_word(std::array<int8_t, NODE> word);
 class key
 {
   public :
-  void creatKey(uint64_t hashed_in, std::array<int8_t, NODE> word_in, uint32_t* d_gen_in, int8_t* d_words_in, Vector_gpu<uint32_t>* d_x_in, Vector_cpugpu<int>* equal_in){
+  void creatKey(uint64_t hashed_in, std::array<int8_t, NODE> word_in, uint32_t* d_gen_in, int8_t* d_words_in, Vector_cpugpu<int>* equal_in){
     hashed = hashed_in;
     word = word_in;
     d_gen = d_gen_in;
     d_words = d_words_in;
-    d_x = d_x_in;
     equal = equal_in;
   }
   uint64_t hashed;
   std::array<int8_t, NODE> word;
   uint32_t* d_gen;
   int8_t* d_words;
-  Vector_gpu<uint32_t>* d_x;
   Vector_cpugpu<int>* equal;
 };
 

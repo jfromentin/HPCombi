@@ -124,7 +124,6 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   Vector_cpugpu<int8_t> todo(32768);
   Vector_cpugpu<int8_t> newtodo(32768);
   Vector_gpu<uint32_t> d_x(65536);
-  Vector_gpu<uint32_t> d_y(65536);
   Vector_cpugpu<uint64_t> hashed(8192);
   Vector_cpugpu<int> equal(1);
   equal.push_back(0);
@@ -132,7 +131,7 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   empty_word.fill(-10);
   
   key empty_key;
-  empty_key.creatKey(-1, empty_word, d_gen, d_words, &d_x, &equal);
+  empty_key.creatKey(-1, empty_word, d_gen, d_words, &equal);
   
   elems.set_empty_key(empty_key);
 
@@ -144,7 +143,7 @@ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   todo.push_back(&(id_word[0]), NODE);
     
   key id_key;
-  id_key.creatKey(hashed[0], id_word, d_gen, d_words, &d_x, &equal);
+  id_key.creatKey(hashed[0], id_word, d_gen, d_words, &equal);
   elems.insert({ id_key, id_word});
 
 
@@ -154,7 +153,7 @@ auto tstartGpu = high_resolution_clock::now();
   for(int i=0; i<NODE; i++){
     newtodo.clear(); 
     hashed.resize(todo.size/NODE*nb_gen * NB_HASH_FUNC, 1);
-    hpcombi_gpu(&todo, &d_x, &d_y, d_gen, &hashed, size, NODE, nb_gen);
+    hpcombi_gpu(&todo, &d_x, d_gen, &hashed, size, NODE, nb_gen);
     
     for(int j=0; j<todo.size/NODE*nb_gen; j++){       
       std::array<int8_t, NODE> newWord;
@@ -163,7 +162,7 @@ auto tstartGpu = high_resolution_clock::now();
       newWord[i] = j%nb_gen;
       //~ print_word(newWord);
       key new_key;
-      new_key.creatKey(hashed[j * NB_HASH_FUNC], newWord, d_gen, d_words, &d_x, &equal);
+      new_key.creatKey(hashed[j * NB_HASH_FUNC], newWord, d_gen, d_words, &equal);
 
       if(elems.insert({ new_key, newWord}).second){
         newtodo.push_back(&(newWord[0]), NODE);
