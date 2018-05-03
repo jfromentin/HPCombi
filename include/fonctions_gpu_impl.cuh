@@ -67,15 +67,17 @@ bool equal_gpu(const key* key1, const key* key2, int block_size, const int size,
 	const int8_t* word1 = &(key1->word[0]);
 	const int8_t* word2 = &(key2->word[0]);
 	uint32_t* d_gen = key1->d_gen;
-	
+	key1->d_x->resize(size * 2);
+	key2->d_x->resize(size * 2);
 	//~ cudaSetDevice(CUDA_DEVICE);
 	int8_t* d_words = key1->d_words;
 	gpuErrchk( cudaMemcpy(d_words, word1, size_word * sizeof(int8_t), cudaMemcpyHostToDevice) );
 	gpuErrchk( cudaMemcpy(d_words + size_word, word2, size_word * sizeof(int8_t), cudaMemcpyHostToDevice) );
 
-	dim3 block(1024, 1);
+	dim3 block(128, 1);
 	//~ dim3 grid((min(size, 16384) + block.x-1)/block.x, 2);
-	dim3 grid((1 + block.x-1)/block.x, 2);
+	//~ dim3 grid((1 + block.x-1)/block.x, 2);
+	dim3 grid((min(size, 16384) + block.x-1)/block.x, 1);
 		equal_kernel<<<grid, block>>>(key1->d_x->device, key2->d_x->device, d_gen, d_words, key1->equal->device, size, size_word, nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );

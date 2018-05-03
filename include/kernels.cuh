@@ -30,7 +30,7 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, uint32_t* __restr
     }
         
     for(int j=0; j<size_word; j++){
-      offset_d_gen =  d_words[j + wordId * size_word];
+      offset_d_gen =  d_words[j + wordId * size_word];  // TODO shared
       if(offset_d_gen > -1){
         
         for(int coef=0; coef<coefPerThread; coef++){
@@ -69,6 +69,78 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, uint32_t* __restr
 
 
 
+//~ __global__ void equal_kernel(uint32_t* __restrict__ d_x, uint32_t* __restrict__ d_y, const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
+                              //~ int* d_equal, const int size, const int size_word, const int8_t nb_gen){
+  //~ // Global thread id and warp id
+  //~ const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  //~ const int nb_threads = blockDim.x*gridDim.x;
+  //~ const int wid = threadIdx.x / warpSize;
+  //~ const int lane = threadIdx.x % warpSize;
+  //~ static __shared__ int shared[32];
+  //~ const int coefPerThread = (size + nb_threads-1) / nb_threads;
+  //~ const int offset_d_x =  blockIdx.y * size;
+
+  //~ int8_t offset_d_gen;
+  //~ int index;
+  //~ if(tid == 0 && blockIdx.y == 0)
+    //~ d_equal[0] = 0;
+
+  //~ // Init
+  //~ for(int coef=0; coef<coefPerThread; coef++){
+    //~ index = tid + nb_threads * coef;
+    //~ if (index < size){
+      //~ d_x[index + offset_d_x] = index;
+    //~ }
+  //~ }
+  
+  //~ // Permutations
+  //~ for(int j=0; j<size_word; j++){
+      //~ offset_d_gen = d_words[j + blockIdx.y*size_word]; // Prefetch ? // TODO shared
+      //~ for(int coef=0; coef<coefPerThread; coef++){
+        //~ index = tid + nb_threads * coef;    
+        //~ if (index < size && offset_d_gen > -1){
+            //~ d_y[index + offset_d_x] = d_x[ d_gen[index + offset_d_gen * size] + offset_d_x];
+      //~ }
+    //~ }
+      //~ __syncthreads(); // Need synch between blocks
+      //~ for(int coef=0; coef<coefPerThread; coef++){
+        //~ index = tid + nb_threads * coef;    
+        //~ if (index < size){
+            //~ d_x[index + offset_d_x] = d_y[index + offset_d_x];
+      //~ }
+    //~ }
+  //~ }
+  
+  //~ if(blockIdx.y==0){
+    //~ int equal=0;
+    //~ for(int coef=0; coef<coefPerThread; coef++){
+      //~ index = tid + nb_threads * coef;
+      //~ if (index < size)
+        //~ if(d_y[index] == d_y[index + size]) // Prefetch ?
+          //~ equal += 1;
+    //~ }
+    
+    //~ // Reduction
+    //~ for (int offset = warpSize/2; offset > 0; offset /= 2) 
+        //~ equal += __shfl_down(equal, offset);
+  
+    //~ if(size > 32){
+      //~ if (lane == 0)
+        //~ shared[wid] = equal;
+        
+      //~ __syncthreads();
+      
+      //~ if (wid == 0) {
+        //~ equal = shared[lane];     
+        //~ for (int offset = warpSize/2; offset > 0; offset /= 2) 
+            //~ equal += __shfl_down(equal, offset);
+      //~ }
+    //~ }
+    //~ if(threadIdx.x == 0)
+      //~ atomicAdd(d_equal, equal);
+  //~ }
+//~ }
+
 __global__ void equal_kernel(uint32_t* __restrict__ d_x, uint32_t* __restrict__ d_y, const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
                               int* d_equal, const int size, const int size_word, const int8_t nb_gen){
   // Global thread id and warp id
@@ -79,66 +151,52 @@ __global__ void equal_kernel(uint32_t* __restrict__ d_x, uint32_t* __restrict__ 
   static __shared__ int shared[32];
   const int coefPerThread = (size + nb_threads-1) / nb_threads;
 
-  int8_t offset_d_gen;
-  int index;
+  int8_t offset_d_gen1, offset_d_gen2;
+  int index, indexPerm1, indexPerm2;
   if(tid == 0 && blockIdx.y == 0)
     d_equal[0] = 0;
+  //~ __syncthreads();
 
   // Init
+  int equal=0;
+  // Permutations
   for(int coef=0; coef<coefPerThread; coef++){
     index = tid + nb_threads * coef;
+    indexPerm1 = index;
+    indexPerm2 = index;
     if (index < size){
-      d_x[index + blockIdx.y*size] = index;
+      for(int j=0; j<size_word; j++){
+        offset_d_gen1 = d_words[j];
+        offset_d_gen2 = d_words[j + size_word];
+        if (offset_d_gen1 > -1)
+            indexPerm1 = d_gen[indexPerm1 + offset_d_gen1 * size];
+        if (offset_d_gen2 > -1)
+            indexPerm2 = d_gen[indexPerm2 + offset_d_gen2 * size];
+      }
+      //~ __syncthreads();
+      if(indexPerm1 == indexPerm2)
+        equal += 1;
     }
   }
-  
-  // Permutations
-  for(int j=0; j<size_word; j++){
-      offset_d_gen = d_words[j + blockIdx.y*size_word]; // Prefetch ?
-      for(int coef=0; coef<coefPerThread; coef++){
-        index = tid + nb_threads * coef;    
-        if (index < size){
-          if(offset_d_gen > -1)
-            d_y[index] = d_x[ d_gen[index + offset_d_gen * size] + blockIdx.y*size];
-      }
-    }
-      __syncthreads();
-      for(int coef=0; coef<coefPerThread; coef++){
-        index = tid + nb_threads * coef;    
-        if (index < size){
-            d_x[index + blockIdx.y*size] = d_y[index];
-      }
-    }
-  }
-  
-  if(blockIdx.y==0){
-    int equal=0;
-    for(int coef=0; coef<coefPerThread; coef++){
-      index = tid + nb_threads * coef;
-      if (index < size)
-        if(d_y[index] == d_y[index + size]) // Prefetch ?
-          equal += 1;
-    }
     
-    // Reduction
-    for (int offset = warpSize/2; offset > 0; offset /= 2) 
-        equal += __shfl_down(equal, offset);
-  
-    if(size > 32){
-      if (lane == 0)
-        shared[wid] = equal;
-        
-      __syncthreads();
+  // Reduction
+  for (int offset = warpSize/2; offset > 0; offset /= 2) 
+      equal += __shfl_down(equal, offset);
+
+  if(size > 32){
+    if (lane == 0)
+      shared[wid] = equal;
       
-      if (wid == 0) {
-        equal = shared[lane];     
-        for (int offset = warpSize/2; offset > 0; offset /= 2) 
-            equal += __shfl_down(equal, offset);
-      }
+    __syncthreads();
+    
+    if (wid == 0) {
+      equal = shared[lane];     
+      for (int offset = warpSize/2; offset > 0; offset /= 2) 
+          equal += __shfl_down(equal, offset);
     }
-    if(threadIdx.x == 0)
-      atomicAdd(d_equal, equal);
   }
+  if(threadIdx.x == 0)
+    atomicAdd(d_equal, equal);
 }
 
 
