@@ -79,7 +79,7 @@ const int nprint = 6;
 
 
 
-struct eqstr
+struct eqTrans
 {
   bool operator()(const PTransf16 key1, const PTransf16 key2) const
   {

@@ -2,11 +2,11 @@
 #include <iostream>
 #include "vector_gpu.cuh"
 
-#define HASH_SIZE 100000
+//~ #define HASH_SIZE 100000
 #define NODE 50
-#define NB_GEN 6
-#define SIZE 100000
-#define BLOCK_SIZE 4
+//~ #define NB_GEN 6
+//~ #define SIZE 100000
+//~ #define BLOCK_SIZE 4
 #define NB_HASH_FUNC 1
 
 void print_word(std::array<int8_t, NODE> word);
@@ -14,18 +14,22 @@ void print_word(std::array<int8_t, NODE> word);
 class key
 {
   public :
-  void creatKey(uint64_t hashed_in, std::array<int8_t, NODE> word_in, uint32_t* d_gen_in, int8_t* d_words_in, Vector_cpugpu<int>* equal_in){
+  void creatKey(uint64_t hashed_in, std::array<int8_t, NODE> word_in, uint32_t* d_gen_in, int8_t* d_words_in, Vector_cpugpu<int>* equal_in, int size_in, int8_t nb_gen_in){
     hashed = hashed_in;
     word = word_in;
     d_gen = d_gen_in;
     d_words = d_words_in;
     equal = equal_in;
+    size = size_in;
+    nb_gen = nb_gen_in;
   }
   uint64_t hashed;
   std::array<int8_t, NODE> word;
   uint32_t* d_gen;
   int8_t* d_words;
   Vector_cpugpu<int>* equal;
+  int size;
+  int8_t nb_gen;
 };
 
 
