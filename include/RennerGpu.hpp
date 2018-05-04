@@ -7,7 +7,7 @@
 #define NB_GEN 6
 #define SIZE 100000
 #define BLOCK_SIZE 4
-#define NB_HASH_FUNC 4
+#define NB_HASH_FUNC 1
 
 void print_word(std::array<int8_t, NODE> word);
 

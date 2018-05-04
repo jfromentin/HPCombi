@@ -73,22 +73,26 @@ __global__ void equal_kernel(const int8_t* __restrict__ d_words, int* d_equal, c
 __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
                               const int size, const int nb_words, const int size_word, const int8_t nb_gen){
   const int tidy = blockIdx.y*blockDim.y + threadIdx.y;
+  const int tidx = blockIdx.x*blockDim.x + threadIdx.x;
   const int wordId = tidy/nb_gen;
-  const int coefPerThread = (size + blockDim.x-1) / blockDim.x;
-  const int offset_d_x =  tidy * size;
-  int offset_d_gen;
+  const int nb_threads = blockDim.x*gridDim.x;
+  const int coefPerThread = (size + nb_threads-1) / nb_threads;
+  const int offset_d_x = tidy * size;
   int index, indexPerm;
+  extern __shared__ int8_t shared[];
   
   if(wordId < nb_words){
     for(int coef=0; coef<coefPerThread; coef++){
-      index = threadIdx.x + blockDim.x*coef;
+      index = tidx + nb_threads*coef;
       indexPerm = index;
       if (index < size){
         // All perm in word  
         for(int j=0; j<size_word; j++){
-          offset_d_gen =  d_words[j + wordId * size_word];  // TODO shared
-          if(offset_d_gen > -1)
-            indexPerm = d_gen[indexPerm + offset_d_gen*size];
+          if(threadIdx.x == 0)
+            shared[threadIdx.y] = d_words[j + wordId * size_word];
+          __syncthreads();
+          if(shared[threadIdx.y] > -1)
+            indexPerm = d_gen[indexPerm + shared[threadIdx.y]*size];
         }
         // Last perm
         indexPerm = d_gen[indexPerm + (tidy%nb_gen)*size];
@@ -229,26 +233,24 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
 }
 
 
-#define NB_HASH_FUNC 4
+#define NB_HASH_FUNC 1
 __global__ void hash_kernel(uint32_t* __restrict__ d_x, uint64_t* d_hashed, const int size, const int nb_vect){
   // kernel with less operation. Each threads compute a part of the polynome with Horner method.
   // A warp computes a hash.
 
   const int tidy = blockIdx.y * blockDim.y + threadIdx.y;
   const int coefPerThread = (size+blockDim.x-1) / blockDim.x;
-  uint64_t primes[NB_HASH_FUNC] = {13, 17, 19, 23};
-  //~ primes[0] = 13;
-  //~ primes[1] = 17;
-  //~ primes[2] = 19;
-  //~ primes[3] = 23;
+  //~ uint64_t primes[NB_HASH_FUNC] = {13, 17, 19, 23};
+  uint64_t primes[NB_HASH_FUNC] = {0x9e3779b97f4a7bb9};
+
   uint64_t out[NB_HASH_FUNC];
-  for(int k=0; k<NB_HASH_FUNC; k++)
+  for(int k=0; k<NB_HASH_FUNC; k++){
     out[k] = 1;
-  uint64_t coef=0;
-    
-  for(int k=0; k<NB_HASH_FUNC; k++)
     for (int j=0; j<coefPerThread*threadIdx.x; j++)
       out[k] *= primes[k];
+  }
+  uint64_t coef=0;
+
 
   if(threadIdx.x + blockDim.x * 0 < size && tidy < nb_vect){
     coef = d_x[tidy*size + threadIdx.x + blockDim.x*0];

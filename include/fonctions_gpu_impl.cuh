@@ -22,19 +22,23 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const 
 	d_x->resize(size * nb_words*nb_gen);
 	
 	words->copyHostToDevice();
-	int threadPerPerm = 1024;
-	int size_block;
-	int size_grid;
+	int threadPerPerm = min(size, 16192);
+	int size_blockx, size_blocky;
+	int size_gridx, size_gridy;
 	for(int i=0; i<10; i++){
-		size_block = 1024/threadPerPerm;
-		size_grid = (nb_words*nb_gen + size_block-1)/size_block;
-		if(threadPerPerm <= size && size_grid <= 65535)
+		size_blockx = min(threadPerPerm, 1024);
+		size_blocky = max(1024/threadPerPerm, 1);
+		size_gridx = (threadPerPerm + size_blockx -1)/size_blockx;
+		size_gridy = (nb_words*nb_gen + size_blocky-1)/size_blocky;
+		if(threadPerPerm <= size && size_gridy*size_gridx <= 65535)
 			break;
 		threadPerPerm /= 2;
 	}
-	dim3 blockPerm(threadPerPerm, size_block);
-	dim3 gridPerm(1, size_grid);
-		permute_all_kernel<<<gridPerm, blockPerm>>>(d_x->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
+	dim3 blockPerm(size_blockx, size_blocky);
+	dim3 gridPerm(size_gridx, size_gridy);
+	//~ printf("blockPerm.x : %d, blockPerm.y : %d\n", blockPerm.x, blockPerm.y);
+	//~ printf("gridPerm.x : %d, gridPerm.y : %d\n", gridPerm.x, gridPerm.y);
+		permute_all_kernel<<<gridPerm, blockPerm, size_blocky*sizeof(int8_t)>>>(d_x->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
 		
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
@@ -63,6 +67,7 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const 
 }
 
 bool equal_gpu(const key* key1, const key* key2, int block_size, const int size, const int size_word, const int8_t nb_gen){
+	//~ cudaProfilerStart();
 	const int8_t* word1 = &(key1->word[0]);
 	const int8_t* word2 = &(key2->word[0]);
 	uint32_t* d_gen = key1->d_gen;
@@ -81,7 +86,7 @@ bool equal_gpu(const key* key1, const key* key2, int block_size, const int size,
 	key1->equal->copyDeviceToHost();
 
 	bool out = (key1->equal->host[0] == size) ? true:false;
-	
+	//~ cudaProfilerStop();
 	return out;
 }
 
