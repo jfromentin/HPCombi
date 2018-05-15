@@ -21,7 +21,8 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
   const int coefPerThread = (size + nb_threads-1) / nb_threads;
   const int offset_d_x = tidy * size;
   int index, indexPerm;
-  extern __shared__ int8_t shared[];
+  int8_t offset_d_gen;
+  //~ extern __shared__ int8_t shared[];
   
   if(wordId < nb_words){
     for(int coef=0; coef<coefPerThread; coef++){
@@ -30,11 +31,12 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
       if (index < size){
         // All perm in word  
         for(int j=0; j<size_word; j++){
-          if(threadIdx.x == 0)
-            shared[threadIdx.y] = d_words[j + wordId * size_word];
-          __syncthreads();
-          if(shared[threadIdx.y] > -1)
-            indexPerm = d_gen[indexPerm + shared[threadIdx.y]*size];
+          //~ if(threadIdx.x == 0)
+            //~ shared[threadIdx.y] = d_words[j + wordId * size_word];
+          //~ __syncthreads();
+          offset_d_gen = d_words[j + wordId * size_word];
+          if(offset_d_gen > -1)
+            indexPerm = d_gen[indexPerm + offset_d_gen*size];
         }
         // Last perm
         indexPerm = d_gen[indexPerm + (tidy%nb_gen)*size];
@@ -52,9 +54,10 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
   const int nb_threads = blockDim.x*gridDim.x;
   const int wid = threadIdx.x / warpSize;
   const int lane = threadIdx.x % warpSize;
-  static __shared__ int shared[34];
+  static __shared__ int shared[32];
   const int coefPerThread = (size + nb_threads-1) / nb_threads;
   int equal=0;
+  int8_t offset_d_gen1, offset_d_gen2;
 
   int index, indexPerm1, indexPerm2;
   if(tid == 0 && blockIdx.y == 0)
@@ -67,14 +70,15 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
     indexPerm2 = index;
     if (index < size){
       for(int j=0; j<size_word; j++){
-        if(tid < 2)
-          shared[32 + tid] = (int)d_words[j + tid*size_word];
-        __syncthreads();
-        
-        if (shared[32] > -1)
-            indexPerm1 = d_gen[indexPerm1 + shared[32] * size];
-        if (shared[33] > -1)
-            indexPerm2 = d_gen[indexPerm2 + shared[33] * size]; 
+        //~ if(tid < 2)
+          //~ shared[32 + tid] = (int)d_words[j + tid*size_word];
+        //~ __syncthreads();
+        offset_d_gen1 = d_words[j];
+        offset_d_gen2 = d_words[j + size_word];
+        if (offset_d_gen1 > -1)
+            indexPerm1 = d_gen[indexPerm1 + offset_d_gen1 * size];
+        if (offset_d_gen2 > -1)
+            indexPerm2 = d_gen[indexPerm2 + offset_d_gen2 * size]; 
       }
       if(indexPerm1 == indexPerm2)
         equal += 1;
