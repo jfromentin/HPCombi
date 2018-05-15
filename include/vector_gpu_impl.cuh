@@ -34,18 +34,16 @@ Vector_cpugpu<T>::~Vector_cpugpu(){
 
 template <typename T>
 void Vector_cpugpu<T>::realloc(){
-	//~ printf("Realloc : %lu\n", capacity);
-	T* oldHost = host;
-	T* oldDevice = device;
-	gpuErrchk( cudaMallocHost((void**)&host, capacity * sizeof(T)) );
+	//~ printf("Realloc : %f Go\n", (float)(capacity* sizeof(T))*1e-9);
+	gpuErrchk( cudaFree(device) );
 	gpuErrchk( cudaMalloc((void**)&device, capacity * sizeof(T)) );
+	T* oldHost = host;
+	gpuErrchk( cudaMallocHost((void**)&host, capacity * sizeof(T)) );
 	for(size_t i=0; i<size; i++){
 		host[i] = oldHost[i];
 	}
 	gpuErrchk( cudaFreeHost(oldHost) );
-	gpuErrchk( cudaFree(oldDevice) );
 	oldHost = NULL;
-	oldDevice = NULL;
 
 }
 
@@ -64,17 +62,6 @@ void Vector_cpugpu<T>::push_back(T* new_array, size_t size_array){
 	}
 	size += size_array;
 }
-
-//~ template <typename T>
-//~ void Vector_cpugpu<T>::resize(size_t newCapacity, int force){
-	//~ if(capacity < newCapacity){
-		//~ while(capacity < newCapacity)
-			//~ capacity *= 2;
-		//~ realloc();
-	//~ }
-	//~ if(force == 1)
-		//~ size = newCapacity;
-//~ }
 
 template <typename T>
 size_t Vector_cpugpu<T>::resize(size_t sizeIn, int runType){
@@ -163,11 +150,9 @@ Vector_gpu<T>::~Vector_gpu(){
 
 template <typename T>
 void Vector_gpu<T>::realloc(){
-	//~ printf("Realloc : %lu\n", capacity);
-	T* oldDevice = device;
+	//~ printf("Realloc : %f Go\n", (float)(capacity* sizeof(T))*1e-9);
+	gpuErrchk( cudaFree(device) );
 	gpuErrchk( cudaMalloc((void**)&device, capacity * sizeof(T)) );
-	gpuErrchk( cudaFree(oldDevice) );
-	oldDevice = NULL;
 }
 
 template <typename T>
