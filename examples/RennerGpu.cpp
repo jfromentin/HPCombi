@@ -71,64 +71,10 @@ int main(int argc, char* argv[]){
       printf("Parameter must be in [2,7], setting it to 2.\n");
   }
 	std::string fileName = "RenA" + std::to_string(inParam) + ".txt";
-  readRenner(fileName, &gen, &size, &nb_gen);
-  printf("Size : %d\n", size);
-  
-  
-  
-    //~ uint32_t* gen = (uint32_t*)malloc(size*nb_gen * sizeof(uint32_t));
-    for(int i=0; i<size*nb_gen; i++){
-		//~ printf("%d ", gen[i]);
-      //~ gen[i] = i%size;
-    }
+    readRenner(fileName, &gen, &size, &nb_gen);
+    printf("Size : %d\n", size);
+
     printf("\n");
-    //~ gen[5] = 6;
-    //~ gen[6] = 5;
-    //~ gen[9] = 10;
-    //~ gen[10] = 9;
-    //~ gen[size + 4] = 5;
-    //~ gen[size + 5] = 4;
-    //~ gen[size + 10] = 11;
-    //~ gen[size + 11] = 10;
-    //~ gen[2*size + 3] = 4;
-    //~ gen[2*size + 4] = 3;
-    //~ gen[2*size + 11] = 12;
-    //~ gen[2*size + 12] = 11;
-    //~ gen[3*size + 2] = 3;
-    //~ gen[3*size + 3] = 2;
-    //~ gen[3*size + 12] = 13;
-    //~ gen[3*size + 13] = 12;
-    //~ gen[4*size + 1] = 2;
-    //~ gen[4*size + 2] = 1;
-    //~ gen[4*size + 13] = 14;
-    //~ gen[4*size + 14] = 13;
-    //~ gen[5*size + 0] = 1;
-    //~ gen[5*size + 1] = 0;
-    //~ gen[5*size + 14] = 15;
-    //~ gen[5*size + 15] = 14;
-    //~ gen[5*size + 7] = 8;
-    //~ gen[5*size + 8] = 7;
-    //~ gen[5*size + 6] = 7;
-    //~ gen[5*size + 7] = 6;
-    //~ gen[5*size + 8] = 9;
-    //~ gen[5*size + 9] = 8;
-    //~ gen[4*size + 6] = 7;
-    //~ gen[4*size + 7] = 6;
-    //~ gen[4*size + 8] = 9;
-    //~ gen[4*size + 9] = 8;
-    //~ gen[5*size + 6] = 8;
-    //~ gen[5*size + 7] = 9;
-    //~ gen[5*size + 8] = 6;
-    //~ gen[5*size + 9] = 7;
-    //~ const PTransf16 s0  {0, 1, 2, 3, 4, 5, 6, 8, 7, 9,10,11,12,13,14,15};
-    //~ const PTransf16 s1e {0, 1, 2, 3, 4, 5, 7, 6, 9, 8,10,11,12,13,14,15};
-    //~ const PTransf16 s1f {0, 1, 2, 3, 4, 5, 8, 9, 6, 7,10,11,12,13,14,15};
-    //~ const PTransf16 s2  {0, 1, 2, 3, 4, 6, 5, 7, 8,10, 9,11,12,13,14,15};
-    //~ const PTransf16 s3  {0, 1, 2, 3, 5, 4, 6, 7, 8, 9,11,10,12,13,14,15};
-    //~ const PTransf16 s4  {0, 1, 2, 4, 3, 5, 6, 7, 8, 9,10,12,11,13,14,15};
-    //~ const PTransf16 s5  {0, 1, 3, 2, 4, 5, 6, 7, 8, 9,10,11,13,12,14,15};
-    //~ const PTransf16 s6  {0, 2, 1, 3, 4, 5, 6, 7, 8, 9,10,11,12,14,13,15};
-    //~ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   
     uint32_t* d_gen;
     int8_t* d_words;
@@ -139,7 +85,7 @@ int main(int argc, char* argv[]){
   
     Vector_cpugpu<int8_t> todo(pow(2, 12));
     Vector_cpugpu<int8_t> newtodo(pow(2, 12));
-    Vector_gpu<uint32_t> d_x(pow(2, 28));
+    Vector_gpu<uint32_t> d_x(pow(2, 12));
     Vector_cpugpu<uint64_t> hashed(pow(2, 12));
     Vector_cpugpu<int> equal(1);
     equal.push_back(0);
@@ -170,7 +116,7 @@ int main(int argc, char* argv[]){
       newtodo.clear();
       hpcombi_gpu(&todo, &d_x, d_gen, &hashed, size, NODE, nb_gen, memory);
       
-      for(int j=0; j<todo.size/NODE*nb_gen; j++){       
+      for(int j=0; j<todo.size/NODE*nb_gen; j++){      
         std::array<int8_t, NODE> newWord;
         for(int k=0; k<NODE; k++)
           newWord[k] = todo.host[(j/nb_gen)*NODE + k];    

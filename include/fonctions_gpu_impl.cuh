@@ -32,63 +32,76 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const 
 	//~ cudaProfilerStart();
 	//~ cudaSetDevice(CUDA_DEVICE);
 	//~ float timer;
-
+	memory /= 4.1;
 	int nb_words = words->size/size_word;
-	size_t constMem = words->capacity*sizeof(int8_t) + sizeof(uint32_t)*nb_gen*size_word;
-	size_t varMem = d_x->resize(size * nb_words*nb_gen, 0) * sizeof(uint32_t) + hashed->resize(nb_words*nb_gen * NB_HASH_FUNC, 0) *sizeof(uint64_t);
-	//~ while(constMem + varMem > memory)
-	
-	
-	
-	size_t memoryNeeded = constMem + varMem;
-	if(d_x->capacity < size * nb_words*nb_gen || hashed->capacity < nb_words*nb_gen * NB_HASH_FUNC)
-		printf("Allocating : %.2f Go, available : %.2f Go\n", (float)memoryNeeded*1e-9, (float)memory*1e-9);
-	
-	d_x->resize(size * nb_words*nb_gen);
-    hashed->resize(nb_words*nb_gen * NB_HASH_FUNC, 2);
-	
+    hashed->resize((size_t)nb_words*nb_gen * NB_HASH_FUNC, 2);	
 	words->copyHostToDevice();
-	int threadPerPerm = min(size, 16192);
-	int size_blockx, size_blocky;
-	int size_gridx, size_gridy;
-	for(int i=0; i<10; i++){
-		size_blockx = min(threadPerPerm, 1024);
-		size_blocky = max(1024/threadPerPerm, 1);
-		size_gridx = (threadPerPerm + size_blockx -1)/size_blockx;
-		size_gridy = (nb_words*nb_gen + size_blocky-1)/size_blocky;
-		if(threadPerPerm < size && size_gridy < 65536 && size_gridx < pow(2,31))
-			break;
-		threadPerPerm /= 2;
-	}
-	dim3 blockPerm(size_blockx, size_blocky);
-	dim3 gridPerm(size_gridx, size_gridy);
-	//~ printf("blockPerm.x : %d, blockPerm.y : %d\n", blockPerm.x, blockPerm.y);
-	//~ printf("gridPerm.x : %d, gridPerm.y : %d\n", gridPerm.x, gridPerm.y);
-		permute_all_kernel<<<gridPerm, blockPerm, size_blocky*sizeof(int8_t)>>>(d_x->device, d_gen, words->device, size, nb_words, size_word, nb_gen);		
-		
-	gpuErrchk( cudaDeviceSynchronize() );
-	gpuErrchk( cudaPeekAtLastError() );
-
-	int gridy;
-	int size_block_hash = 32;
-	int block_size = 4;
-	for(int i=0; i<5; i++){
-		if(size_block_hash <= size)
-			break;
-		size_block_hash /= 2;
-	}
-	for(int i=0; i<5; i++){
-		gridy = (nb_words*nb_gen + block_size-1)/block_size;		
-		if(gridy > 65535 && block_size*size_block_hash < 1024)
-			block_size *= 2;
-	}
-	dim3 blockHash(size_block_hash, block_size);
-	dim3 gridHash(1, (nb_words*nb_gen + blockHash.y-1)/blockHash.y);
-		hash_kernel<<<gridHash, blockHash>>>(d_x->device, hashed->device, size, nb_words*nb_gen);
 	
-	gpuErrchk( cudaDeviceSynchronize() );
-	gpuErrchk( cudaPeekAtLastError() );
-	hashed->copyDeviceToHost();
+	size_t constMem = words->capacity*sizeof(int8_t) + sizeof(uint32_t)*nb_gen*size_word + hashed->resize((size_t)nb_words*nb_gen * NB_HASH_FUNC, 0);
+	memory -= constMem;
+	size_t varMem = d_x->resize((size_t)size * nb_words*nb_gen, 0, memory);
+	//~ printf("varMem : %.2f Mo\n", (float)varMem*1e-6);
+	int div = (varMem + memory-1) / memory;
+	int paquetMax = (nb_words + div-1) / div;
+	int paquet = paquetMax;
+
+	//~ if(d_x->capacity < (size_t)size * paquetMax*nb_gen){
+		//~ varMem = d_x->resize((size_t)size * paquetMax*nb_gen, 0, memory);
+		//~ printf("div : %d, paquet : %d\n", div, paquetMax);
+		//~ printf("Allocating : %.2f Mo, available : %.2f Mo, constMem : %.2f Mo\n", (float)varMem*1e-6, (float)memory*1e-6, (float)constMem*1e-6);
+	//~ }
+	varMem = d_x->resize((size_t)size * paquetMax*nb_gen, 1, memory);
+	
+	for(int pass=0; pass<div; pass++){
+		if(pass == div-1)
+			paquet = nb_words-paquetMax*pass;
+		if(div > 1)
+			printf("pass %d/%d, paquet : %d\n", pass+1, div, paquet);
+		if(paquet > 0){
+			int threadPerPerm = min(size, 16384);
+			int size_blockx, size_blocky;
+			int size_gridx, size_gridy;
+			for(int i=0; i<10; i++){
+				size_blockx = min(threadPerPerm, 1024);
+				size_blocky = max(1024/threadPerPerm, 1);
+				size_gridx = (threadPerPerm + size_blockx -1)/size_blockx;
+				size_gridy = (paquet*nb_gen + size_blocky-1)/size_blocky;
+				if(threadPerPerm < size && size_gridy < 65536 && size_gridx < pow(2,31))
+					break;
+				threadPerPerm /= 2;
+			}
+			dim3 blockPerm(size_blockx, size_blocky);
+			dim3 gridPerm(size_gridx, size_gridy);
+			//~ printf("blockPerm.x : %d, blockPerm.y : %d\n", blockPerm.x, blockPerm.y);
+			//~ printf("gridPerm.x : %d, gridPerm.y : %d\n", gridPerm.x, gridPerm.y);
+				//~ permute_all_kernel<<<gridPerm, blockPerm, size_blocky*sizeof(int8_t)>>>(d_x->device, d_gen, words->device, size, paquet, size_word, nb_gen);		
+				permute_all_kernel<<<gridPerm, blockPerm>>>(d_x->device, d_gen, words->device + pass*paquetMax*size_word, size, paquet, size_word, nb_gen);
+			gpuErrchk( cudaDeviceSynchronize() );
+			gpuErrchk( cudaPeekAtLastError() );
+		
+			int gridy;
+			int size_block_hash = 32;
+			int block_size = 4;
+			for(int i=0; i<5; i++){
+				if(size_block_hash <= size)
+					break;
+				size_block_hash /= 2;
+			}
+			for(int i=0; i<5; i++){
+				gridy = (paquet*nb_gen + block_size-1)/block_size;		
+				if(gridy > 65536 && block_size*size_block_hash < 1024)
+					block_size *= 2;
+			}
+			dim3 blockHash(size_block_hash, block_size);
+			dim3 gridHash(1, (paquet*nb_gen + blockHash.y-1)/blockHash.y);
+				hash_kernel<<<gridHash, blockHash>>>(d_x->device, hashed->device + pass*paquetMax*nb_gen, size, paquet*nb_gen);
+			
+			gpuErrchk( cudaDeviceSynchronize() );
+			gpuErrchk( cudaPeekAtLastError() );
+			
+			hashed->copyDeviceToHost(pass*paquetMax*nb_gen, paquet*nb_gen);
+		}
+	}
 	//~ cudaProfilerStop();
 }
 
@@ -117,7 +130,7 @@ bool equal_gpu(const key* key1, const key* key2){
 
 void hash_id_gpu(Vector_cpugpu<uint64_t>* hashed, Vector_gpu<uint32_t>* d_x, const int size){
 	//~ cudaSetDevice(CUDA_DEVICE);
-	d_x->resize(size);
+	d_x->resize((size_t)size);
 	
 	dim3 blockInit(32, 4);
 	dim3 gridInit(1, ( 1 + blockInit.y-1 )/blockInit.y);

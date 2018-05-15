@@ -19,7 +19,7 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
   const int wordId = tidy/nb_gen;
   const int nb_threads = blockDim.x*gridDim.x;
   const int coefPerThread = (size + nb_threads-1) / nb_threads;
-  const int offset_d_x = tidy * size;
+  const size_t offset_d_x = (size_t)tidy * size;
   int index, indexPerm;
   int8_t offset_d_gen;
   //~ extern __shared__ int8_t shared[];
@@ -40,7 +40,7 @@ __global__ void permute_all_kernel(uint32_t* __restrict__ d_x, const uint32_t* _
         }
         // Last perm
         indexPerm = d_gen[indexPerm + (tidy%nb_gen)*size];
-        d_x[index + offset_d_x] = indexPerm;
+        d_x[(size_t)index + offset_d_x] = indexPerm;
       }
     }
   }

@@ -1,6 +1,7 @@
 #ifndef VECTOR_GPU_CUH
 #define VECTOR_GPU_CUH
 #if COMPILE_CUDA==1
+#include  <limits>
 
 template <typename T>
 class Vector_cpugpu {
@@ -16,9 +17,9 @@ class Vector_cpugpu {
 		void realloc();	
 		void push_back(T new_elem);	
 		void push_back(T* new_array, size_t size_array);
-		size_t resize(size_t newCapacity, int runType=1);
-		void copyHostToDevice() const;	
-		void copyDeviceToHost() const;
+		size_t resize(size_t newCapacity, int runType=1, size_t maxMem=std::numeric_limits<size_t>::max());
+		void copyHostToDevice(size_t offset=0, size_t copySize=0) const;	
+		void copyDeviceToHost(size_t offset=0, size_t copySize=0) const;
 		void clear();
 		void print() const;
 		void swap(Vector_cpugpu<T>* other);
@@ -41,7 +42,7 @@ class Vector_gpu {
 		Vector_gpu(size_t sizeIn);	
 		~Vector_gpu();	
 		void realloc();
-		size_t resize(size_t sizeIn, int runType=1);
+		size_t resize(size_t sizeIn, int runType=1, size_t maxMem=std::numeric_limits<size_t>::max());
 };
 
 // Explicit instentiation
