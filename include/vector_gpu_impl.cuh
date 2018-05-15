@@ -65,16 +65,31 @@ void Vector_cpugpu<T>::push_back(T* new_array, size_t size_array){
 	size += size_array;
 }
 
+//~ template <typename T>
+//~ void Vector_cpugpu<T>::resize(size_t newCapacity, int force){
+	//~ if(capacity < newCapacity){
+		//~ while(capacity < newCapacity)
+			//~ capacity *= 2;
+		//~ realloc();
+	//~ }
+	//~ if(force == 1)
+		//~ size = newCapacity;
+//~ }
+
 template <typename T>
-void Vector_cpugpu<T>::resize(size_t newCapacity, int force){
-	if(capacity < newCapacity){
-		while(capacity < newCapacity)
-			capacity *= 2;
-		realloc();
+size_t Vector_cpugpu<T>::resize(size_t sizeIn, int runType){
+	size_t newCapacity = capacity;
+	if(newCapacity < sizeIn){
+		while(newCapacity < sizeIn)
+			newCapacity *= 2;
+		if(runType > 0){
+			capacity = newCapacity;
+			realloc();
+		}
 	}
-	//~ printf("Resizing, %lu, capacity : %lu\n", newCapacity, capacity);
-	if(force == 1)
-		size = newCapacity;
+	if(runType == 2)
+		size = sizeIn;
+	return newCapacity;
 }
 
 template <typename T>
@@ -156,12 +171,17 @@ void Vector_gpu<T>::realloc(){
 }
 
 template <typename T>
-void Vector_gpu<T>::resize(size_t newCapacity){
-	if(capacity < newCapacity){
-		while(capacity < newCapacity)
-			capacity *= 2;
-		realloc();
+size_t Vector_gpu<T>::resize(size_t sizeIn, int runType){
+	size_t newCapacity = capacity;
+	if(newCapacity < sizeIn){
+		while(newCapacity < sizeIn)
+			newCapacity *= 2;
+		if(runType > 0){
+			capacity = newCapacity;
+			realloc();
+		}
 	}
+	return newCapacity;
 }
 
 #endif  // USE_CUDA

@@ -16,7 +16,7 @@ class Vector_cpugpu {
 		void realloc();	
 		void push_back(T new_elem);	
 		void push_back(T* new_array, size_t size_array);
-		void resize(size_t newCapacity, int force=0);
+		size_t resize(size_t newCapacity, int runType=1);
 		void copyHostToDevice() const;	
 		void copyDeviceToHost() const;
 		void clear();
@@ -41,7 +41,7 @@ class Vector_gpu {
 		Vector_gpu(size_t sizeIn);	
 		~Vector_gpu();	
 		void realloc();
-		void resize(size_t newCapacity);
+		size_t resize(size_t sizeIn, int runType=1);
 };
 
 // Explicit instentiation

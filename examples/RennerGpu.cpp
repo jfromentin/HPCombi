@@ -56,7 +56,7 @@ struct hash_gpu_class
 
 
 int main(int argc, char* argv[]){
-  cudaSetDevice_cpu();
+  size_t memory = cudaSetDevice_cpu();
   using namespace std::chrono;
   int size = 10000;
   int8_t nb_gen = 6;
@@ -64,10 +64,11 @@ int main(int argc, char* argv[]){
 //~ for(size=100; size<200000; size *=1.09){
 //~ for(size=100000; size<100001; size *=1.08){
 	uint32_t* gen;
-  int inParam = *argv[1] - '0';
-  if(inParam > 7 || inParam < 2){
-    inParam = 2;
-    printf("Parameter must be in [2,7], setting it to 2.\n");
+  int inParam = 2;
+  if(argc > 1){
+    inParam = *argv[1] - '0';
+    if(inParam > 7 || inParam < 2)
+      printf("Parameter must be in [2,7], setting it to 2.\n");
   }
 	std::string fileName = "RenA" + std::to_string(inParam) + ".txt";
   readRenner(fileName, &gen, &size, &nb_gen);
@@ -136,10 +137,10 @@ int main(int argc, char* argv[]){
   
     google::dense_hash_map< key, std::array<int8_t, NODE>, hash_gpu_class, eqTrans> elems(25000);
   
-    Vector_cpugpu<int8_t> todo(32768);
-    Vector_cpugpu<int8_t> newtodo(32768);
-    Vector_gpu<uint32_t> d_x(65536);
-    Vector_cpugpu<uint64_t> hashed(8192);
+    Vector_cpugpu<int8_t> todo(pow(2, 12));
+    Vector_cpugpu<int8_t> newtodo(pow(2, 12));
+    Vector_gpu<uint32_t> d_x(pow(2, 28));
+    Vector_cpugpu<uint64_t> hashed(pow(2, 12));
     Vector_cpugpu<int> equal(1);
     equal.push_back(0);
     std::array<int8_t, NODE> empty_word;
@@ -166,9 +167,8 @@ int main(int argc, char* argv[]){
     auto tstartGpu = high_resolution_clock::now();
   
     for(int i=0; i<NODE; i++){
-      newtodo.clear(); 
-      hashed.resize(todo.size/NODE*nb_gen * NB_HASH_FUNC, 1);
-      hpcombi_gpu(&todo, &d_x, d_gen, &hashed, size, NODE, nb_gen);
+      newtodo.clear();
+      hpcombi_gpu(&todo, &d_x, d_gen, &hashed, size, NODE, nb_gen, memory);
       
       for(int j=0; j<todo.size/NODE*nb_gen; j++){       
         std::array<int8_t, NODE> newWord;

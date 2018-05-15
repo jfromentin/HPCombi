@@ -10,7 +10,7 @@
 
 #include "fonctions_gpu.cuh"
 
-void cudaSetDevice_cpu(){ 
+size_t cudaSetDevice_cpu(){ 
 	cudaSetDevice(CUDA_DEVICE);
 	cudaDeviceProp prop;
 	cudaGetDeviceProperties(&prop, CUDA_DEVICE);
@@ -24,16 +24,28 @@ void cudaSetDevice_cpu(){
 	printf("	Max Threads Dim : %d x %d x %d\n", prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
 	printf("	Max Grid Size : %d x %d x %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
 	printf("\n");
+	return prop.totalGlobalMem;
 }
 
 void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
-				const int size, const int size_word, const int8_t nb_gen){
+				const int size, const int size_word, const int8_t nb_gen, size_t memory){
 	//~ cudaProfilerStart();
 	//~ cudaSetDevice(CUDA_DEVICE);
 	//~ float timer;
+
 	int nb_words = words->size/size_word;
+	size_t constMem = words->capacity*sizeof(int8_t) + sizeof(uint32_t)*nb_gen*size_word;
+	size_t varMem = d_x->resize(size * nb_words*nb_gen, 0) * sizeof(uint32_t) + hashed->resize(nb_words*nb_gen * NB_HASH_FUNC, 0) *sizeof(uint64_t);
+	//~ while(constMem + varMem > memory)
+	
+	
+	
+	size_t memoryNeeded = constMem + varMem;
+	if(d_x->capacity < size * nb_words*nb_gen || hashed->capacity < nb_words*nb_gen * NB_HASH_FUNC)
+		printf("Allocating : %.2f Go, available : %.2f Go\n", (float)memoryNeeded*1e-9, (float)memory*1e-9);
 	
 	d_x->resize(size * nb_words*nb_gen);
+    hashed->resize(nb_words*nb_gen * NB_HASH_FUNC, 2);
 	
 	words->copyHostToDevice();
 	int threadPerPerm = min(size, 16192);
@@ -44,7 +56,7 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const 
 		size_blocky = max(1024/threadPerPerm, 1);
 		size_gridx = (threadPerPerm + size_blockx -1)/size_blockx;
 		size_gridy = (nb_words*nb_gen + size_blocky-1)/size_blocky;
-		if(threadPerPerm <= size && size_gridy*size_gridx <= 65535)
+		if(threadPerPerm < size && size_gridy < 65536 && size_gridx < pow(2,31))
 			break;
 		threadPerPerm /= 2;
 	}
