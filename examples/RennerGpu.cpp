@@ -41,8 +41,8 @@ struct eqTrans
 {
   bool operator()(const key key1, const key key2) const
   {
-    return (key1.hashed == key2.hashed) && (equal_gpu(&key1, &key2));
-    //~ return key1.hashed == key2.hashed;
+    //~ return (key1.hashed == key2.hashed) && (equal_gpu(&key1, &key2));
+    return key1.hashed == key2.hashed;
   }
 };
 
@@ -55,69 +55,86 @@ struct hash_gpu_class
 };
 
 
-int main(){
-  void cudaSetDevice_cpu();
+int main(int argc, char* argv[]){
+  cudaSetDevice_cpu();
   using namespace std::chrono;
-  int size = 16;
-  const int8_t nb_gen = 6;
+  int size = 10000;
+  int8_t nb_gen = 6;
 
 //~ for(size=100; size<200000; size *=1.09){
-for(size=100; size<450000; size *=1.08){
+//~ for(size=100000; size<100001; size *=1.08){
+	uint32_t* gen;
+  int inParam = *argv[1] - '0';
+  if(inParam > 7 || inParam < 2){
+    inParam = 2;
+    printf("Parameter must be in [2,7], setting it to 2.\n");
+  }
+	std::string fileName = "RenA" + std::to_string(inParam) + ".txt";
+  readRenner(fileName, &gen, &size, &nb_gen);
   printf("Size : %d\n", size);
-    uint32_t* gen = (uint32_t*)malloc(size*nb_gen * sizeof(uint32_t));
+  
+  
+  
+    //~ uint32_t* gen = (uint32_t*)malloc(size*nb_gen * sizeof(uint32_t));
     for(int i=0; i<size*nb_gen; i++){
-      gen[i] = i%size;
+		//~ printf("%d ", gen[i]);
+      //~ gen[i] = i%size;
     }
-    gen[5] = 6;
-    gen[6] = 5;
-    gen[9] = 10;
-    gen[10] = 9;
-    gen[size + 4] = 5;
-    gen[size + 5] = 4;
-    gen[size + 10] = 11;
-    gen[size + 11] = 10;
-    gen[2*size + 3] = 4;
-    gen[2*size + 4] = 3;
-    gen[2*size + 11] = 12;
-    gen[2*size + 12] = 11;
-    gen[3*size + 2] = 3;
-    gen[3*size + 3] = 2;
-    gen[3*size + 12] = 13;
-    gen[3*size + 13] = 12;
-    gen[4*size + 1] = 2;
-    gen[4*size + 2] = 1;
-    gen[4*size + 13] = 14;
-    gen[4*size + 14] = 13;
-    gen[5*size + 0] = 1;
-    gen[5*size + 1] = 0;
-    gen[5*size + 14] = 15;
-    gen[5*size + 15] = 14;
+    printf("\n");
+    //~ gen[5] = 6;
+    //~ gen[6] = 5;
+    //~ gen[9] = 10;
+    //~ gen[10] = 9;
+    //~ gen[size + 4] = 5;
+    //~ gen[size + 5] = 4;
+    //~ gen[size + 10] = 11;
+    //~ gen[size + 11] = 10;
+    //~ gen[2*size + 3] = 4;
+    //~ gen[2*size + 4] = 3;
+    //~ gen[2*size + 11] = 12;
+    //~ gen[2*size + 12] = 11;
+    //~ gen[3*size + 2] = 3;
+    //~ gen[3*size + 3] = 2;
+    //~ gen[3*size + 12] = 13;
+    //~ gen[3*size + 13] = 12;
+    //~ gen[4*size + 1] = 2;
+    //~ gen[4*size + 2] = 1;
+    //~ gen[4*size + 13] = 14;
+    //~ gen[4*size + 14] = 13;
+    //~ gen[5*size + 0] = 1;
+    //~ gen[5*size + 1] = 0;
+    //~ gen[5*size + 14] = 15;
+    //~ gen[5*size + 15] = 14;
     //~ gen[5*size + 7] = 8;
     //~ gen[5*size + 8] = 7;
     //~ gen[5*size + 6] = 7;
     //~ gen[5*size + 7] = 6;
     //~ gen[5*size + 8] = 9;
     //~ gen[5*size + 9] = 8;
-    //~ gen[6*size + 6] = 7;
-    //~ gen[6*size + 7] = 6;
-    //~ gen[6*size + 8] = 9;
-    //~ gen[6*size + 9] = 8;
-    const PTransf16 s0  {0, 1, 2, 3, 4, 5, 6, 8, 7, 9,10,11,12,13,14,15};
-    const PTransf16 s1e {0, 1, 2, 3, 4, 5, 7, 6, 9, 8,10,11,12,13,14,15};
-    const PTransf16 s1f {0, 1, 2, 3, 4, 5, 8, 9, 6, 7,10,11,12,13,14,15};
-    const PTransf16 s2  {0, 1, 2, 3, 4, 6, 5, 7, 8,10, 9,11,12,13,14,15};
-    const PTransf16 s3  {0, 1, 2, 3, 5, 4, 6, 7, 8, 9,11,10,12,13,14,15};
-    const PTransf16 s4  {0, 1, 2, 4, 3, 5, 6, 7, 8, 9,10,12,11,13,14,15};
-    const PTransf16 s5  {0, 1, 3, 2, 4, 5, 6, 7, 8, 9,10,11,13,12,14,15};
-    const PTransf16 s6  {0, 2, 1, 3, 4, 5, 6, 7, 8, 9,10,11,12,14,13,15};
-    const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
+    //~ gen[4*size + 6] = 7;
+    //~ gen[4*size + 7] = 6;
+    //~ gen[4*size + 8] = 9;
+    //~ gen[4*size + 9] = 8;
+    //~ gen[5*size + 6] = 8;
+    //~ gen[5*size + 7] = 9;
+    //~ gen[5*size + 8] = 6;
+    //~ gen[5*size + 9] = 7;
+    //~ const PTransf16 s0  {0, 1, 2, 3, 4, 5, 6, 8, 7, 9,10,11,12,13,14,15};
+    //~ const PTransf16 s1e {0, 1, 2, 3, 4, 5, 7, 6, 9, 8,10,11,12,13,14,15};
+    //~ const PTransf16 s1f {0, 1, 2, 3, 4, 5, 8, 9, 6, 7,10,11,12,13,14,15};
+    //~ const PTransf16 s2  {0, 1, 2, 3, 4, 6, 5, 7, 8,10, 9,11,12,13,14,15};
+    //~ const PTransf16 s3  {0, 1, 2, 3, 5, 4, 6, 7, 8, 9,11,10,12,13,14,15};
+    //~ const PTransf16 s4  {0, 1, 2, 4, 3, 5, 6, 7, 8, 9,10,12,11,13,14,15};
+    //~ const PTransf16 s5  {0, 1, 3, 2, 4, 5, 6, 7, 8, 9,10,11,13,12,14,15};
+    //~ const PTransf16 s6  {0, 2, 1, 3, 4, 5, 6, 7, 8, 9,10,11,12,14,13,15};
+    //~ const PTransf16 s7  {1, 0, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,15,14};
   
     uint32_t* d_gen;
     int8_t* d_words;
     malloc_gen(&d_gen, gen, size, nb_gen);
     malloc_words(&d_words, NODE);
   
-    google::dense_hash_map< key, std::array<int8_t, NODE>, hash_gpu_class, eqTrans> elems(2000);
+    google::dense_hash_map< key, std::array<int8_t, NODE>, hash_gpu_class, eqTrans> elems(25000);
   
     Vector_cpugpu<int8_t> todo(32768);
     Vector_cpugpu<int8_t> newtodo(32768);
@@ -181,13 +198,13 @@ for(size=100; size<450000; size *=1.08){
     auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
     timeGpu = tmGpu.count()*1e3;
     printf("Time GPU : %.3fms\n", timeGpu);
-    write_renner(size, nb_gen, elems.size(), timeGpu);
+    //~ write_renner(size, nb_gen, elems.size(), timeGpu);
     
     cout << "elems =  " << elems.size() << endl;
     free(gen);
     free_gen(&d_gen);
     free_words(&d_words);
-  }
+  //~ }
 }
 
 

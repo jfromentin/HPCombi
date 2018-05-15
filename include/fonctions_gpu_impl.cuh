@@ -10,7 +10,21 @@
 
 #include "fonctions_gpu.cuh"
 
-void cudaSetDevice_cpu(){ cudaSetDevice(CUDA_DEVICE); }
+void cudaSetDevice_cpu(){ 
+	cudaSetDevice(CUDA_DEVICE);
+	cudaDeviceProp prop;
+	cudaGetDeviceProperties(&prop, CUDA_DEVICE);
+	printf("%s :\n", prop.name); 
+	printf("	Global memory available : %.2f Go\n", (float)prop.totalGlobalMem*1e-9); 
+	printf("	Shared memory per block : %.2f Ko\n", (float)prop.sharedMemPerBlock*1e-3);
+	printf("	Registers per block : %d\n", prop.regsPerBlock);
+	printf("	Clock Rate : %.2f GHz\n", (float)prop.clockRate*1e-6);
+	printf("	MultiProcessor Count : %d\n", prop.multiProcessorCount);
+	printf("	Max Threads Per Block : %d\n", prop.maxThreadsPerBlock);
+	printf("	Max Threads Dim : %d x %d x %d\n", prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
+	printf("	Max Grid Size : %d x %d x %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
+	printf("\n");
+}
 
 void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
 				const int size, const int size_word, const int8_t nb_gen){
@@ -18,7 +32,7 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const 
 	//~ cudaSetDevice(CUDA_DEVICE);
 	//~ float timer;
 	int nb_words = words->size/size_word;
-
+	
 	d_x->resize(size * nb_words*nb_gen);
 	
 	words->copyHostToDevice();
