@@ -62,7 +62,10 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
   int index, indexPerm1, indexPerm2;
   if(tid == 0 && blockIdx.y == 0)
     d_equal[0] = 0;
-    
+
+  if(tid <32 && blockIdx.y == 0)
+    shared[tid] = 0;
+       
   // Permutations
   for(int coef=0; coef<coefPerThread; coef++){
     index = tid + nb_threads * coef;
@@ -89,7 +92,7 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
   for (int offset = warpSize/2; offset > 0; offset /= 2) 
       equal += __shfl_down(equal, offset);
 
-  if(size > 32){
+  if(size > 32 && blockDim.x > 32){
     if (lane == 0)
       shared[wid] = equal;      
     __syncthreads();    

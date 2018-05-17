@@ -142,8 +142,8 @@ int main(int argc, char* argv[]){
     
     auto tfinGpu = high_resolution_clock::now();
     auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
-    timeGpu = tmGpu.count()*1e3;
-    printf("Time GPU : %.3fms\n", timeGpu);
+    timeGpu = tmGpu.count();
+    printf("Time GPU : %.3f s\n", timeGpu);
     //~ write_renner(size, nb_gen, elems.size(), timeGpu);
     
     cout << "elems =  " << elems.size() << endl;
