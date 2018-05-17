@@ -59,7 +59,7 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
   int equal=0;
   int8_t offset_d_gen1, offset_d_gen2;
 
-  int index, indexPerm1, indexPerm2;
+  int indexPerm1, indexPerm2;
   if(tid == 0 && blockIdx.y == 0)
     d_equal[0] = 0;
 
@@ -68,10 +68,9 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
        
   // Permutations
   for(int coef=0; coef<coefPerThread; coef++){
-    index = tid + nb_threads * coef;
-    indexPerm1 = index;
-    indexPerm2 = index;
-    if (index < size){
+    indexPerm1 = tid + nb_threads * coef;
+    indexPerm2 = indexPerm1;
+    if (indexPerm1 < size){
       for(int j=0; j<size_word; j++){
         //~ if(tid < 2)
           //~ shared[32 + tid] = (int)d_words[j + tid*size_word];

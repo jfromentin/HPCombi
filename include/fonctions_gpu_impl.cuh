@@ -32,7 +32,7 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const 
 	//~ cudaProfilerStart();
 	//~ cudaSetDevice(CUDA_DEVICE);
 	//~ float timer;
-	memory /= 4.1;
+	memory /= 1.1;
 	int nb_words = words->size/size_word;
     hashed->resize((size_t)nb_words*nb_gen * NB_HASH_FUNC, 2);	
 	words->copyHostToDevice();
@@ -55,8 +55,8 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const 
 	for(int pass=0; pass<div; pass++){
 		if(pass == div-1)
 			paquet = nb_words-paquetMax*pass;
-		if(div > 1)
-			printf("pass %d/%d, paquet : %d\n", pass+1, div, paquet);
+		//~ if(div > 1)
+			//~ printf("pass %d/%d, paquet : %d\n", pass+1, div, paquet);
 		if(paquet > 0){
 			int threadPerPerm = min(size, 16384);
 			int size_blockx, size_blocky;
@@ -105,25 +105,21 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const 
 	//~ cudaProfilerStop();
 }
 
-bool equal_gpu(const key* key1, const key* key2){
+bool equal_gpu(const key* key1, const key* key2, uint32_t* d_gen, int8_t* d_words, const int size, const int8_t nb_gen, Vector_cpugpu<int>* equal){
 	//~ cudaProfilerStart();
 	const int8_t* word1 = &(key1->word[0]);
 	const int8_t* word2 = &(key2->word[0]);
-	int size = key1->size;
-	uint32_t* d_gen = key1->d_gen;
-	//~ cudaSetDevice(CUDA_DEVICE);
-	int8_t* d_words = key1->d_words;
 	gpuErrchk( cudaMemcpy(d_words, word1, NODE * sizeof(int8_t), cudaMemcpyHostToDevice) );
 	gpuErrchk( cudaMemcpy(d_words + NODE, word2, NODE * sizeof(int8_t), cudaMemcpyHostToDevice) );
 
 	dim3 block(128, 1);
 	dim3 grid((min(size, 16384) + block.x-1)/block.x, 1);
-		equal_kernel<<<grid, block>>>(d_gen, d_words, key1->equal->device, size, NODE, key1->nb_gen);
+		equal_kernel<<<grid, block>>>(d_gen, d_words, equal->device, size, NODE, nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
-	key1->equal->copyDeviceToHost();
+	equal->copyDeviceToHost();
 
-	bool out = (key1->equal->host[0] == size) ? true:false;
+	bool out = (equal->host[0] == size) ? true:false;
 	//~ cudaProfilerStop();
 	return out;
 }

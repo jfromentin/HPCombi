@@ -48,6 +48,13 @@ void Vector_cpugpu<T>::realloc(){
 }
 
 template <typename T>
+void Vector_cpugpu<T>::fill(T input){
+	size = capacity;
+	for(int i=0; i<size; i++)
+		host[i] = input;
+}
+
+template <typename T>
 void Vector_cpugpu<T>::push_back(T new_elem){
 	resize(size + 1);
 	host[size] = new_elem;

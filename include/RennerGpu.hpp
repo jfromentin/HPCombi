@@ -14,22 +14,13 @@ void print_word(std::array<int8_t, NODE> word);
 class key
 {
   public :
-  void creatKey(uint64_t hashed_in, std::array<int8_t, NODE> word_in, uint32_t* d_gen_in, int8_t* d_words_in, Vector_cpugpu<int>* equal_in, int size_in, int8_t nb_gen_in){
-    hashed = hashed_in;
-    word = word_in;
-    d_gen = d_gen_in;
-    d_words = d_words_in;
-    equal = equal_in;
-    size = size_in;
-    nb_gen = nb_gen_in;
-  }
-  uint64_t hashed;
-  std::array<int8_t, NODE> word;
-  uint32_t* d_gen;
-  int8_t* d_words;
-  Vector_cpugpu<int>* equal;
-  int size;
-  int8_t nb_gen;
+	  key(uint64_t hashed_in, std::array<int8_t, NODE> word_in){
+	    hashed = hashed_in;
+	    word = word_in;
+	  }  
+	  key(){}// For dens_hash_map
+	  uint64_t hashed;
+	  std::array<int8_t, NODE> word;
 };
 
 

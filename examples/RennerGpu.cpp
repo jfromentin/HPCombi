@@ -37,21 +37,36 @@ using namespace std;
 using namespace HPCombi;
 using namespace std::chrono;
 
-struct eqTrans
+class eqTrans
 {
-  bool operator()(const key key1, const key key2) const
-  {
-    //~ return (key1.hashed == key2.hashed) && (equal_gpu(&key1, &key2));
-    return key1.hashed == key2.hashed;
-  }
+  public :
+    uint32_t* d_gen;
+    int8_t* d_words;
+    int size;
+    int8_t nb_gen;
+    Vector_cpugpu<int>* equal;
+    bool operator()(const key key1, const key key2) const
+    {
+      //~ return (key1.hashed == key2.hashed) && (equal_gpu(&key1, &key2, d_gen, d_words, size, nb_gen, equal));
+      return key1.hashed == key2.hashed;
+    }
+    
+    eqTrans(uint32_t* d_genIn, int8_t* d_wordsIn, int sizeIn, int8_t nb_genIn, Vector_cpugpu<int>* equalIn){
+      d_gen = d_genIn;
+      size = sizeIn;
+      nb_gen = nb_genIn;
+      equal = equalIn;
+      d_words = d_wordsIn;
+    }
 };
 
-struct hash_gpu_class
+class hash_gpu_class
 {
-  bool operator()(const key key1) const
-  {
-    return key1.hashed;
-  }
+  public :
+    bool operator()(const key keyIn) const
+    {
+      return keyIn.hashed;
+    }
 };
 
 
@@ -81,7 +96,8 @@ int main(int argc, char* argv[]){
     malloc_gen(&d_gen, gen, size, nb_gen);
     malloc_words(&d_words, NODE);
   
-    google::dense_hash_map< key, std::array<int8_t, NODE>, hash_gpu_class, eqTrans> elems(25000);
+    //~ google::dense_hash_map< key, std::array<int8_t, NODE>, hash_gpu_class, eqTrans> elems(25000);
+
   
     Vector_cpugpu<int8_t> todo(pow(2, 12));
     Vector_cpugpu<int8_t> newtodo(pow(2, 12));
@@ -92,8 +108,11 @@ int main(int argc, char* argv[]){
     std::array<int8_t, NODE> empty_word;
     empty_word.fill(-10);
     
-    key empty_key;
-    empty_key.creatKey(-1, empty_word, d_gen, d_words, &equal, size, nb_gen);
+    key empty_key(-1, empty_word);
+
+    hash_gpu_class hashG;
+    eqTrans equalG(d_gen, d_words, size, nb_gen, &equal);
+    google::dense_hash_map< key, std::array<int8_t, NODE>, hash_gpu_class, eqTrans > elems(25000, hashG, equalG);
     
     elems.set_empty_key(empty_key);
   
@@ -104,8 +123,7 @@ int main(int argc, char* argv[]){
     id_word.fill(-1);
     todo.push_back(&(id_word[0]), NODE);
       
-    key id_key;
-    id_key.creatKey(hashed[0], id_word, d_gen, d_words, &equal, size, nb_gen);
+    key id_key(hashed[0], id_word);
     elems.insert({ id_key, id_word});
   
   
@@ -122,8 +140,7 @@ int main(int argc, char* argv[]){
           newWord[k] = todo.host[(j/nb_gen)*NODE + k];    
         newWord[i] = j%nb_gen;
         //~ print_word(newWord);
-        key new_key;
-        new_key.creatKey(hashed[j * NB_HASH_FUNC], newWord, d_gen, d_words, &equal, size, nb_gen);
+        key new_key(hashed[j * NB_HASH_FUNC], newWord);
   
         if(elems.insert({ new_key, newWord}).second){
           newtodo.push_back(&(newWord[0]), NODE);

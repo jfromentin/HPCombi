@@ -13,7 +13,8 @@ class Vector_cpugpu {
 		
 		Vector_cpugpu();	
 		Vector_cpugpu(size_t capacityIn);	
-		~Vector_cpugpu();	
+		~Vector_cpugpu();
+		void fill(T input);
 		void realloc();	
 		void push_back(T new_elem);	
 		void push_back(T* new_array, size_t size_array);

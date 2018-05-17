@@ -10,7 +10,7 @@
 	void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
 				const int size, const int size_word, const int8_t nb_gen, size_t memory);
 	void hash_id_gpu(Vector_cpugpu<uint64_t>* hashed, Vector_gpu<uint32_t>* d_x, const int size);
-	bool equal_gpu(const key* key1, const key* key2);
+	bool equal_gpu(const key* key1, const key* key2, uint32_t* d_gen, int8_t* d_words, const int size, const int8_t nb_gen, Vector_cpugpu<int>* equal);
 	void malloc_gen(uint32_t** __restrict__ d_gen, const uint32_t* __restrict__ gen, const int size, const int8_t nb_gen);
 	void free_gen(uint32_t** __restrict__ d_gen);
 	void malloc_words(int8_t** __restrict__ d_words, const int size);
