@@ -1,7 +1,6 @@
 #ifndef HPCOMBI_PERM_FONCTIONS_GPU_CUH
 #define HPCOMBI_PERM_FONCTIONS_GPU_CUH
-#if COMPILE_CUDA==1	
-	#define CUDA_DEVICE 1
+#if COMPILE_CUDA==1
 	#include <cuda_runtime.h>
 	#include <cuda.h>
 	#include "vector_gpu.cuh"

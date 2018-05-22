@@ -26,12 +26,9 @@ size_t cudaSetDevice_cpu(){
 	int count=0;
 	cudaGetDeviceCount(&count);
 	printf("count %d\n", count);
-	if(count>1)
-		cudaSetDevice(CUDA_DEVICE);
-	else
-		cudaSetDevice(0);
+	cudaSetDevice(count-1);
 	cudaDeviceProp prop;
-	cudaGetDeviceProperties(&prop, CUDA_DEVICE);
+	cudaGetDeviceProperties(&prop, count-1);
 	printf("%s :\n", prop.name); 
 	printf("	Global memory available : %.2f Go\n", static_cast<float>(prop.totalGlobalMem)*1e-9); 
 	printf("	Shared memory per block : %.2f Ko\n", static_cast<float>(prop.sharedMemPerBlock)*1e-3);
@@ -48,7 +45,6 @@ size_t cudaSetDevice_cpu(){
 void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 				const int size, const int size_word, const int8_t nb_gen, size_t memory){
 	//~ cudaProfilerStart();
-	//~ cudaSetDevice(CUDA_DEVICE);
 	//~ float timer;
 	memory /= 1.05;
 	int nb_words = words.size()/size_word;
@@ -136,7 +132,6 @@ bool equal_gpu(const Key& key1, const Key& key2, uint32_t* d_gen, int8_t* d_word
 }
 
 void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint32_t>& workSpace, const int size){
-	//~ cudaSetDevice(CUDA_DEVICE);
 	workSpace.resize(static_cast<size_t>(size));
 	
 	const dim3 blockInit(32, 4);
@@ -154,13 +149,11 @@ void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint32_t>& workSpac
 }
 
 void malloc_gen(uint32_t*& __restrict__ d_gen, const uint32_t* __restrict__ gen, const int size, const int8_t nb_gen){
-	//~ cudaSetDevice(CUDA_DEVICE);
 	gpuErrchk( cudaMalloc((void**)&d_gen, size*nb_gen * sizeof(uint32_t)) );
 	gpuErrchk( cudaMemcpy(d_gen, gen, size*nb_gen * sizeof(uint32_t), cudaMemcpyHostToDevice) );	
 }
 
 void malloc_words(int8_t*& __restrict__ d_words, const int size){
-	//~ cudaSetDevice(CUDA_DEVICE);
 	gpuErrchk( cudaMalloc((void**)&d_words, size*2 * sizeof(uint8_t)) );
 }
 
