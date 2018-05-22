@@ -1,32 +1,22 @@
 #ifndef HPCOMBI_PERM_FONCTIONS_GPU_CUH
 #define HPCOMBI_PERM_FONCTIONS_GPU_CUH
 #if COMPILE_CUDA==1	
-	#define CUDA_DEVICE 0
+	#define CUDA_DEVICE 1
 	#include <cuda_runtime.h>
+	#include <cuda.h>
 	#include "vector_gpu.cuh"
 	#include "RennerGpu.hpp"
 	
-	void hash_gpu(const uint32_t* __restrict__ x, const int block_size, uint64_t* hashed, const int size, const int nb_vect, int kernel_num);
-	void hpcombi_gpu(Vector_cpugpu<int8_t>* words, Vector_gpu<uint32_t>* d_x, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>* hashed, 
-				const int size, const int size_word, const int8_t nb_gen, size_t memory);
-	void hash_id_gpu(Vector_cpugpu<uint64_t>* hashed, Vector_gpu<uint32_t>* d_x, const int size);
-	bool equal_gpu(const key* key1, const key* key2, uint32_t* d_gen, int8_t* d_words, const int size, const int8_t nb_gen, Vector_cpugpu<int>* equal);
-	void malloc_gen(uint32_t** __restrict__ d_gen, const uint32_t* __restrict__ gen, const int size, const int8_t nb_gen);
-	void free_gen(uint32_t** __restrict__ d_gen);
-	void malloc_words(int8_t** __restrict__ d_words, const int size);
-	void free_words(int8_t** __restrict__ d_words);
+	void hash_gpu(const uint32_t* __restrict__, const int, uint64_t*, const int, const int, int);
+	void hpcombi_gpu(Vector_cpugpu<int8_t>&, Vector_gpu<uint32_t>&, const uint32_t* __restrict__, Vector_cpugpu<uint64_t>&, 
+				const int, const int, const int8_t, size_t);
+	void hash_id_gpu(Vector_cpugpu<uint64_t>&, Vector_gpu<uint32_t>&, const int);
+	bool equal_gpu(const Key&, const Key&, uint32_t*, int8_t*, const int, const int8_t, Vector_cpugpu<int>&);
+	void malloc_gen(uint32_t*& __restrict__, const uint32_t* __restrict__, const int, const int8_t);
+	void free_gen(uint32_t*& __restrict__);
+	void malloc_words(int8_t*& __restrict__, const int);
+	void free_words(int8_t*& __restrict__);
 	size_t cudaSetDevice_cpu();
 
-	// GPU error catching
-	#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-	inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
-	{
-	   if (code != cudaSuccess) 
-	   {
-	      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-	      if (abort) exit(code);
-	   }
-	}
-	
 #endif  // USE_CUDA
 #endif  // HPCOMBI_PERM_FONCTIONS_GPU_CUH

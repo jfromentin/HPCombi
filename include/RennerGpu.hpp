@@ -1,3 +1,5 @@
+#ifndef RENNERGPU
+#define RENNERGPU
 #include <array>
 #include <iostream>
 #include "vector_gpu.cuh"
@@ -9,20 +11,23 @@
 //~ #define BLOCK_SIZE 4
 #define NB_HASH_FUNC 1
 
-void print_word(std::array<int8_t, NODE> word);
+void print_word(std::array<int8_t, NODE>);
 
-class key
+class Key
 {
-  public :
-	  key(uint64_t hashed_in, std::array<int8_t, NODE> word_in){
-	    hashed = hashed_in;
-	    word = word_in;
-	  }  
-	  key(){}// For dens_hash_map
-	  uint64_t hashed;
+  private :
 	  std::array<int8_t, NODE> word;
+	  uint64_t hashedAtt;
+  
+  public :
+    Key(const uint64_t hashed, const std::array<int8_t, NODE> word) : hashedAtt(hashed), word(word) {}
+	  Key(){}// For dense_hash_map    
+    int8_t &operator[](uint64_t i){ return word[i]; }
+    const int8_t &operator[](uint64_t i) const { return word[i]; }
+    const int8_t* data() const { return word.data(); }
+    uint64_t hashed() const { return hashedAtt; }
+    
 };
-
 
 
 void print_ptr_attr( const cudaPointerAttributes& pa ) {
@@ -34,3 +39,4 @@ void print_ptr_attr( const cudaPointerAttributes& pa ) {
     std::cout << "  devicePointer: " << std::hex << pa.devicePointer << std::endl;
     std::cout << "  hostPointer:   " << pa.hostPointer << std::endl;
 }
+#endif  // RENNERGPU
