@@ -121,11 +121,13 @@ bool equal_gpu(const Key& key1, const Key& key2, uint32_t* d_gen, int8_t* d_word
 
 	const dim3 block(128, 1);
 	const dim3 grid((min(size, 16384) + block.x-1)/block.x, 1);
+	//~ printf("block.x : %d, block.y : %d\n", block.x, block.y);
+	//~ printf("grid.x : %d, grid.y : %d\n", grid.x, grid.y);
 		equal_kernel<<<grid, block>>>(d_gen, d_words, equal.device(), size, NODE, nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 	equal.copyDeviceToHost();
-
+	//~ printf("size : %d, equal : %d\n", size, equal[0]);
 	const bool out = (equal[0] == size) ? true:false;
 	//~ cudaProfilerStop();
 	return out;

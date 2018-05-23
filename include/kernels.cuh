@@ -63,8 +63,8 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
   if(tid == 0 && blockIdx.y == 0)
     d_equal[0] = 0;
 
-  if(tid <32 && blockIdx.y == 0)
-    shared[tid] = 0;
+  if(threadIdx.x <32 && blockIdx.y == 0)
+    shared[threadIdx.x] = 0;
        
   // Permutations
   for(int coef=0; coef<coefPerThread; coef++){
@@ -86,24 +86,27 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
         equal += 1;
     }
   }
-    
+
   // Reduction
-  for (int offset = warpSize/2; offset > 0; offset /= 2) 
+  for (unsigned int offset = warpSize/2; offset > 0; offset /= 2) 
       equal += __shfl_down(equal, offset);
+      //~ equal += __shfl_down_sync(0xffffffff, equal, offset);
 
   if(size > 32 && blockDim.x > 32){
     if (lane == 0)
-      shared[wid] = equal;      
+      shared[wid] = equal;
     __syncthreads();    
     if (wid == 0) {
       equal = shared[lane];
       __syncthreads();   
-      for (int offset = warpSize/2; offset > 0; offset /= 2) 
+      for (unsigned int offset = warpSize/2; offset > 0; offset /= 2) 
           equal += __shfl_down(equal, offset);
+          //~ equal += __shfl_down_sync(0xffffffff, equal, offset);
     }
   }
-  if(threadIdx.x == 0)
+  if(threadIdx.x == 0){
     atomicAdd(d_equal, equal);
+}
 }
 
 
