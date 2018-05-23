@@ -5,7 +5,7 @@
 #include "vector_gpu.cuh"
 
 //~ #define HASH_SIZE 100000
-#define NODE 50
+#define NODE 6*8
 //~ #define NB_GEN 6
 //~ #define SIZE 100000
 //~ #define BLOCK_SIZE 4
@@ -16,12 +16,12 @@ void print_word(std::array<int8_t, NODE>);
 class Key
 {
   private :
-	  std::array<int8_t, NODE> word;
 	  uint64_t hashedAtt;
+	  std::array<int8_t, NODE> word;
   
   public :
     Key(const uint64_t hashed, const std::array<int8_t, NODE> word) : hashedAtt(hashed), word(word) {}
-	  Key(){}// For dense_hash_map    
+    Key(){}// For dense_hash_map    
     int8_t &operator[](uint64_t i){ return word[i]; }
     const int8_t &operator[](uint64_t i) const { return word[i]; }
     const int8_t* data() const { return word.data(); }
