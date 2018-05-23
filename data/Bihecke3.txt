@@ -1,4 +1,5 @@
 # BiHeckeMonoide 3
+4
 6
 2 4 2 5 4 5
 1 1 3 3 5 5
