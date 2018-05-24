@@ -45,7 +45,6 @@ void Vector_cpugpu<T>::realloc(){
 	}
 	gpuErrchk( cudaFreeHost(oldHost) );
 	oldHost = NULL;
-
 }
 
 template <typename T>

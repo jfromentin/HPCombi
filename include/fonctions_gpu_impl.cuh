@@ -42,6 +42,7 @@ size_t cudaSetDevice_cpu(){
 	return prop.totalGlobalMem;
 }
 
+
 void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 				const int size, const int size_word, const int8_t nb_gen, size_t memory){
 	//~ cudaProfilerStart();
@@ -92,16 +93,17 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
 			gpuErrchk( cudaDeviceSynchronize() );
 			gpuErrchk( cudaPeekAtLastError() );
 
-			dim3 blockHash(32, 4), gridHash(1, 1);
+			// blockHash.y must be 1
+			dim3 blockHash(64, 1), gridHash(1, 1);
 			for(int i=0; i<6; i++){
-				if(blockHash.x <= size)
+				if(blockHash.y <= size)
 					break;
-				blockHash.x /= 2;
+				blockHash.y /= 2;
 			}
 			for(int i=0; i<6; i++){
-				gridHash.y = (paquet*nb_gen + blockHash.y-1)/blockHash.y;		
-				if(gridHash.y > 65536 && blockHash.y*blockHash.x < 1024)
-					blockHash.y *= 2;
+				gridHash.x = (paquet*nb_gen + blockHash.x-1)/blockHash.x;		
+				if(gridHash.x > pow(2,31) && blockHash.x*blockHash.y < 1024)
+					blockHash.x *= 2;
 			}
 				hash_kernel<<<gridHash, blockHash>>>(workSpace.device(), hashed.device() + pass*paquetMax*nb_gen, size, paquet*nb_gen);
 			

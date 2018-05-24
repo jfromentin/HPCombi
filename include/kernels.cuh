@@ -115,22 +115,22 @@ __global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed
   // kernel with less operation. Each threads compute a part of the polynome with Horner method.
   // A warp computes a hash.
 
-  const int tidy = blockIdx.y * blockDim.y + threadIdx.y;
-  const int coefPerThread = (size+blockDim.x-1) / blockDim.x;
+  const int tidy = blockIdx.x * blockDim.x + threadIdx.x;
+  const int coefPerThread = (size+blockDim.y-1) / blockDim.y;
   //~ uint64_t primes[NB_HASH_FUNC] = {13, 17, 19, 23};
   uint64_t primes[NB_HASH_FUNC] = {0x9e3779b97f4a7bb9};
 
   uint64_t out[NB_HASH_FUNC];
   for(int k=0; k<NB_HASH_FUNC; k++){
     out[k] = 1;
-    for (int j=0; j<coefPerThread*threadIdx.x; j++)
+    for (int j=0; j<coefPerThread*threadIdx.y; j++)
       out[k] *= primes[k];
   }
   uint64_t coef=0;
 
 
-  if(threadIdx.x + blockDim.x * 0 < size && tidy < nb_vect){
-    coef = workSpace[tidy*size + threadIdx.x + blockDim.x*0];
+  if(threadIdx.y + blockDim.y * 0 < size && tidy < nb_vect){
+    coef = workSpace[tidy*size + threadIdx.y + blockDim.y*0];
     for(int k=0; k<NB_HASH_FUNC; k++)
       out[k] *= coef;
   }
@@ -140,8 +140,8 @@ __global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed
 
   coef=0;
   for(int i=1; i<coefPerThread; i++){
-    if(threadIdx.x + blockDim.x * i < size && tidy < nb_vect)
-      coef = workSpace[tidy*size + threadIdx.x + blockDim.x*i];
+    if(threadIdx.y + blockDim.y * i < size && tidy < nb_vect)
+      coef = workSpace[tidy*size + threadIdx.y + blockDim.y*i];
 
     for(int k=0; k<NB_HASH_FUNC; k++){
       out[k] += coef;
@@ -152,11 +152,11 @@ __global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed
   }
 
   // Reduction
-  for(int k=0; k<NB_HASH_FUNC; k++)
-    for (int offset = blockDim.x/2; offset > 0; offset /= 2) 
-        out[k] += __shfl_down(out[k], offset);
+  //~ for(int k=0; k<NB_HASH_FUNC; k++)
+    //~ for (int offset = blockDim.y/2; offset > 0; offset /= 2) 
+        //~ out[k] += __shfl_down(out[k], offset);
 
-  if(threadIdx.x == 0)
+  if(threadIdx.y == 0)
     for(int k=0; k<NB_HASH_FUNC; k++)
       d_hashed[NB_HASH_FUNC*tidy + k] = out[k] >> 32;
 }

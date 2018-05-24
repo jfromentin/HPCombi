@@ -19,9 +19,10 @@
 #include <array>
 #include <string>
 #include <vector>
-#include <sparsehash/dense_hash_map>
+#include <sparsehash/dense_hash_set>
 #include <chrono>
 #include <iotools.hpp>
+#include <iomanip>
 
 using namespace std;
 using namespace std::chrono;
@@ -30,10 +31,10 @@ class eqTrans
 {
   private :
     uint32_t* d_gen;
-    int8_t* d_words;
     int size;
-    int8_t nb_gen;
     Vector_cpugpu<int>* equal;
+    int8_t* d_words;
+    int8_t nb_gen;
   public :
     eqTrans(uint32_t* d_gen, int8_t* d_words, const int size, const int8_t nb_gen, Vector_cpugpu<int>& equal) :
         d_gen(d_gen), size(size), nb_gen(nb_gen), equal(&equal), d_words(d_words) {}
@@ -73,7 +74,7 @@ int main(int argc, char* argv[]){
     fileName = "RenA2";
 	fileName = fileName + ".txt";
   readRenner(fileName, &gen, &size, &nb_gen);
-  printf("Size : %d\n", size);
+  printf("Size : %d, sizeof key : %lu bytes\n", size, sizeof(Key));
 
   printf("\n");
 
@@ -98,7 +99,7 @@ int main(int argc, char* argv[]){
 
   hash_gpu_class hashG;
   eqTrans equalG(d_gen, d_words, size, nb_gen, equal);
-  google::dense_hash_map< Key, std::array<int8_t, NODE>, hash_gpu_class, eqTrans > elems(25000, hashG, equalG);
+  google::dense_hash_set< Key, hash_gpu_class, eqTrans > elems(25000, hashG, equalG);
   
   elems.set_empty_key(empty_key);
 
@@ -110,35 +111,38 @@ int main(int argc, char* argv[]){
   todo.push_back(&(id_word[0]), NODE);
     
   Key id_key(hashed[0], id_word);
-  elems.insert({ id_key, id_word});
+  elems.insert(id_key);
 
 
   double timeGpu;
+  double timeCpu=0;
   auto tstartGpu = high_resolution_clock::now();
-
   for(int i=0; i<NODE; i++){
     newtodo.clear();
     hpcombi_gpu(todo, workSpace, d_gen, hashed, size, NODE, nb_gen, memory);
     
-    for(int j=0; j<todo.size()/NODE*nb_gen; j++){      
+    for(int j=0; j<todo.size()/NODE*nb_gen; j++){
+      
       std::array<int8_t, NODE> newWord;
       for(int k=0; k<NODE; k++)
         newWord[k] = todo.host()[(j/nb_gen)*NODE + k];    
       newWord[i] = j%nb_gen;
-      //~ print_word(newWord);
       Key new_key(hashed[j * NB_HASH_FUNC], newWord);
-
-      if(elems.insert({ new_key, newWord}).second){
+      //~ auto tstartCpu = high_resolution_clock::now();
+      if(elems.insert(new_key).second){
         newtodo.push_back(&(newWord[0]), NODE);
-        //~ print_word(newWord);
       }
-      else{
-      }
+      //~ auto tfinCpu = high_resolution_clock::now();
+      //~ auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+      //~ timeCpu += tmCpu.count();
     }
 
-    todo.swap(&newtodo);
+    todo.swap(&newtodo);  
+    auto tfinGpu = high_resolution_clock::now();
+    auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
+    timeGpu = tmGpu.count();
     cout << i << ", todo = " << todo.size()/NODE << ", elems = " << elems.size()
-         << ", #Bucks = " << elems.bucket_count() << endl;
+         << ", #Bucks = " << elems.bucket_count() << ", time : " << std::setprecision(3) << timeGpu << " s" << endl;
     if(todo.size()/NODE == 0)
       break;
   }
@@ -146,7 +150,7 @@ int main(int argc, char* argv[]){
   auto tfinGpu = high_resolution_clock::now();
   auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
   timeGpu = tmGpu.count();
-  printf("Time GPU : %.3f s\n", timeGpu);
+  printf("Time GPU : %.3f s, CPU : %.3f s\n", timeGpu, timeCpu);
   //~ write_renner(size, nb_gen, elems.size(), timeGpu);
   
   cout << "elems =  " << elems.size() << endl;
