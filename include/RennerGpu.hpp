@@ -5,7 +5,7 @@
 #include "vector_gpu.cuh"
 
 //~ #define HASH_SIZE 100000
-#define NODE (7*8)
+#define NODE (10*8)
 //~ #define NB_GEN 6
 //~ #define SIZE 100000
 //~ #define BLOCK_SIZE 4

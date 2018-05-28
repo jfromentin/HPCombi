@@ -25,7 +25,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 size_t cudaSetDevice_cpu(){
 	int count=0;
 	cudaGetDeviceCount(&count);
-	printf("count %d\n", count);
+	printf("GPU count : %d\n", count);
 	cudaSetDevice(count-1);
 	cudaDeviceProp prop;
 	cudaGetDeviceProperties(&prop, count-1);
@@ -46,7 +46,10 @@ size_t cudaSetDevice_cpu(){
 void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 				const int size, const int size_word, const int8_t nb_gen, size_t memory){
 	//~ cudaProfilerStart();
-	//~ float timer;
+	float time;
+	cudaEvent_t start, stop;
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
 	memory /= 1.05;
 	int nb_words = words.size()/size_word;
     hashed.resize(static_cast<size_t>(nb_words)*nb_gen * NB_HASH_FUNC, 2);	
@@ -69,6 +72,7 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
 	//~ }
 	varMem = workSpace.resize(static_cast<size_t>(size) * paquetMax*nb_gen, 1, memory);
 	
+	cudaEventRecord(start);
 	for(int pass=0; pass<div; pass++){
 		if(pass == div-1)
 			paquet = nb_words-paquetMax*pass;
@@ -113,6 +117,11 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
 			hashed.copyDeviceToHost(pass*paquetMax*nb_gen, paquet*nb_gen);
 		}
 	}
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	cudaEventElapsedTime(&time, start, stop);
+	time /= 1e3;
+	//~ std::cout << "Time in hpcombi : " << (int)time/3600 << ":" << (int)time%3600/60 << ":" << ((int)time%3600)%60 << std::endl;
 	//~ cudaProfilerStop();
 }
 

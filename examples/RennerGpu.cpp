@@ -99,7 +99,7 @@ int main(int argc, char* argv[]){
 
   hash_gpu_class hashG;
   eqTrans equalG(d_gen, d_words, size, nb_gen, equal);
-  google::dense_hash_set< Key, hash_gpu_class, eqTrans > elems(25000, hashG, equalG);
+  google::dense_hash_set< Key, hash_gpu_class, eqTrans > elems(7000000, hashG, equalG);
   
   elems.set_empty_key(empty_key);
 
@@ -128,13 +128,13 @@ int main(int argc, char* argv[]){
         newWord[k] = todo.host()[(j/nb_gen)*NODE + k];    
       newWord[i] = j%nb_gen;
       Key new_key(hashed[j * NB_HASH_FUNC], newWord);
-      //~ auto tstartCpu = high_resolution_clock::now();
+      auto tstartCpu = high_resolution_clock::now();
       if(elems.insert(new_key).second){
         newtodo.push_back(&(newWord[0]), NODE);
       }
-      //~ auto tfinCpu = high_resolution_clock::now();
-      //~ auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
-      //~ timeCpu += tmCpu.count();
+      auto tfinCpu = high_resolution_clock::now();
+      auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+      timeCpu += tmCpu.count();
     }
 
     todo.swap(&newtodo);  
@@ -142,7 +142,9 @@ int main(int argc, char* argv[]){
     auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
     timeGpu = tmGpu.count();
     cout << i << ", todo = " << todo.size()/NODE << ", elems = " << elems.size()
-         << ", #Bucks = " << elems.bucket_count() << ", time : " << std::setprecision(3) << timeGpu << " s" << endl;
+         << ", #Bucks = " << elems.bucket_count() << ", table size = " 
+         << elems.bucket_count()*sizeof(Key)*1e-6 << " Mo, time : " << std::setprecision(3) 
+         << (int)timeGpu/3600 << ":" << (int)timeGpu%3600/60 << ":" << ((int)timeGpu%3600)%60 << endl;
     if(todo.size()/NODE == 0)
       break;
   }
@@ -150,7 +152,7 @@ int main(int argc, char* argv[]){
   auto tfinGpu = high_resolution_clock::now();
   auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
   timeGpu = tmGpu.count();
-  printf("Time GPU : %.3f s, CPU : %.3f s\n", timeGpu, timeCpu);
+  printf("Total time : %.3f s, insert : %.3f s\n", timeGpu, timeCpu);
   //~ write_renner(size, nb_gen, elems.size(), timeGpu);
   
   cout << "elems =  " << elems.size() << endl;
