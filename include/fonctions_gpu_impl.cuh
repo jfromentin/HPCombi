@@ -45,8 +45,9 @@ size_t cudaSetDevice_cpu(){
 }
 
 
-void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
-				const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
+template <typename T>
+void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace, 
+				const T* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 				const int size, const int size_word, const int8_t nb_gen, size_t memory){
 	//~ cudaProfilerStart();
 	//~ float time;
@@ -58,7 +59,7 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace,
 	
 	// Divide the size of words to ensure enough memory space is available on the GPU.
 	size_t constMem = words.capacity()*sizeof(int8_t) 
-					+ sizeof(uint32_t)*nb_gen*size_word 
+					+ sizeof(T)*nb_gen*size_word 
 					+ hashed.resize(static_cast<size_t>(nb_words)*nb_gen * NB_HASH_FUNC, 0);
 	memory -= constMem;
 	size_t varMem = workSpace.resize(static_cast<size_t>(size) * nb_words*nb_gen, 0, memory);
@@ -124,7 +125,8 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace,
 	//~ cudaProfilerStop();
 }
 
-bool equal_gpu(const Key& key1, const Key& key2, uint32_t* d_gen, int8_t* d_words,
+template <typename T>
+bool equal_gpu(const Key& key1, const Key& key2, T* d_gen, int8_t* d_words,
 				Vector_cpugpu<int>& equal,	const int size, const int8_t nb_gen){
 	// key1.data() are in paged memory.
 	// Time could be saved if they where allocated in pinned memory.
@@ -141,7 +143,8 @@ bool equal_gpu(const Key& key1, const Key& key2, uint32_t* d_gen, int8_t* d_word
 	return out;
 }
 
-void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint32_t>& workSpace, const int size){
+template <typename T>
+void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<T>& workSpace, const int size){
 	workSpace.resize(static_cast<size_t>(size));
 		
 	const dim3 blockInit(32, 4);
@@ -159,21 +162,69 @@ void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint32_t>& workSpac
 	hashed.copyDeviceToHost();
 }
 
-void malloc_gen(uint32_t*& __restrict__ d_gen, const uint32_t* __restrict__ gen, 
+template <typename T>
+void malloc_gen(T*& __restrict__ d_gen, const uint64_t* __restrict__ gen, 
 				const int size, const int8_t nb_gen){
-	gpuErrchk( cudaMalloc((void**)&d_gen, size*nb_gen * sizeof(uint32_t)) );
-	gpuErrchk( cudaMemcpy(d_gen, gen, size*nb_gen * sizeof(uint32_t), cudaMemcpyHostToDevice) );	
+	T* tmp;
+	gpuErrchk( cudaMallocHost((void**)&tmp, size*nb_gen * sizeof(T)) );
+	for(int i=0; i<size*nb_gen; i++)
+		tmp[i] = gen[i];
+	gpuErrchk( cudaMalloc((void**)&d_gen, size*nb_gen * sizeof(T)) );
+	gpuErrchk( cudaMemcpy(d_gen, tmp, size*nb_gen * sizeof(T), cudaMemcpyHostToDevice) );	
 }
 
 void malloc_words(int8_t*& __restrict__ d_words, const int size){
 	gpuErrchk( cudaMalloc((void**)&d_words, size*2 * sizeof(uint8_t)) );
 }
 
-void free_gen(uint32_t*& __restrict__ d_gen){
+template <typename T>
+void free_gen(T*& __restrict__ d_gen){
 	gpuErrchk( cudaFree(d_gen) );
 }
 
 void free_words(int8_t*& __restrict__ d_words){
 	gpuErrchk( cudaFree(d_words) );
 }
+
+// Explicit instentiation uint64_t
+template void hpcombi_gpu<uint64_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint64_t>& workSpace, 
+					const uint64_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
+					const int size, const int size_word, const int8_t nb_gen, size_t memory);
+template void hash_id_gpu<uint64_t>(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint64_t>& workSpace, const int size);
+template bool equal_gpu<uint64_t>(const Key& key1, const Key& key2, uint64_t* d_gen, int8_t* d_words,
+					Vector_cpugpu<int>& equal, const int size, const int8_t nb_gen);
+template void malloc_gen<uint64_t>(uint64_t*& __restrict__ d_gen, const uint64_t* __restrict__ gen, 
+					const int size, const int8_t nb_gen);
+template void free_gen<uint64_t>(uint64_t*& __restrict__ d_gen);
+// Explicit instentiation uint32_t
+template void hpcombi_gpu<uint32_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
+					const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
+					const int size, const int size_word, const int8_t nb_gen, size_t memory);
+template void hash_id_gpu<uint32_t>(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint32_t>& workSpace, const int size);
+template bool equal_gpu<uint32_t>(const Key& key1, const Key& key2, uint32_t* d_gen, int8_t* d_words,
+					Vector_cpugpu<int>& equal, const int size, const int8_t nb_gen);
+template void malloc_gen<uint32_t>(uint32_t*& __restrict__ d_gen, const uint64_t* __restrict__ gen, 
+					const int size, const int8_t nb_gen);
+template void free_gen<uint32_t>(uint32_t*& __restrict__ d_gen);
+// Explicit instentiation uint16_t
+template void hpcombi_gpu<uint16_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint16_t>& workSpace, 
+					const uint16_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
+					const int size, const int size_word, const int8_t nb_gen, size_t memory);
+template void hash_id_gpu<uint16_t>(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint16_t>& workSpace, const int size);
+template bool equal_gpu<uint16_t>(const Key& key1, const Key& key2, uint16_t* d_gen, int8_t* d_words,
+					Vector_cpugpu<int>& equal, const int size, const int8_t nb_gen);
+template void malloc_gen<uint16_t>(uint16_t*& __restrict__ d_gen, const uint64_t* __restrict__ gen, 
+					const int size, const int8_t nb_gen);
+template void free_gen<uint16_t>(uint16_t*& __restrict__ d_gen);
+// Explicit instentiation uint8_t
+template void hpcombi_gpu<uint8_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint8_t>& workSpace, 
+					const uint8_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
+					const int size, const int size_word, const int8_t nb_gen, size_t memory);
+template void hash_id_gpu<uint8_t>(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint8_t>& workSpace, const int size);
+template bool equal_gpu<uint8_t>(const Key& key1, const Key& key2, uint8_t* d_gen, int8_t* d_words,
+					Vector_cpugpu<int>& equal, const int size, const int8_t nb_gen);
+template void malloc_gen<uint8_t>(uint8_t*& __restrict__ d_gen, const uint64_t* __restrict__ gen, 
+					const int size, const int8_t nb_gen);
+template void free_gen<uint8_t>(uint8_t*& __restrict__ d_gen);
+
 #endif  // HPCOMBI_PERM_FONCTIONS_GPU_IMPL_CUH

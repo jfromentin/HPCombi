@@ -86,10 +86,6 @@ class Vector_cpugpu {
 		T* host() const { return hostAtt; }
 };
 
-// Explicit instentiation
-template class Vector_cpugpu<int>;
-template class Vector_cpugpu<uint64_t>;
-template class Vector_cpugpu<int8_t>;
 
 
 /** @class Vector_gpu
@@ -130,8 +126,6 @@ class Vector_gpu {
 		T* device() const { return deviceAtt; }
 };
 
-// Explicit instentiation
-template class Vector_gpu<uint32_t>;
 
 template <typename T>
 std::ostream &operator<<(std::ostream &stream, const Vector_cpugpu<T> &vect) {

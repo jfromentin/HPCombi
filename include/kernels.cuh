@@ -21,7 +21,8 @@
 * @param nb_gen Number of generators.
 *
 */      
-__global__ void compose_kernel(uint32_t* __restrict__ workSpace, const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
+template <typename T>
+__global__ void compose_kernel(T* __restrict__ workSpace, const T* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
                               const int size, const int nb_words, const int size_word, const int8_t nb_gen);
                               
 /** @brief Compute the hash values of transformations.
@@ -35,7 +36,8 @@ __global__ void compose_kernel(uint32_t* __restrict__ workSpace, const uint32_t*
 * @param nb_trans Number of transformations to hash.
 *
 */   
-__global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans);
+template <typename T>
+__global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans);
                            
 /** @brief Initialize workSpace to identity.
 * @param workSpace Array allocated on GPU of size size*nb_trans containing the transformations.
@@ -43,7 +45,8 @@ __global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed
 * @param nb_trans Number of transformations to hash.
 *
 */   
-__global__ void initId_kernel(uint32_t * __restrict__ workSpace, const int size, const int nb_trans);
+template <typename T>
+__global__ void initId_kernel(T * __restrict__ workSpace, const int size, const int nb_trans);
                            
 /** @brief Check equality of the resulting transformation of two words.
 * 		1st stage) d_words array contains two suites of generators (named by there indexes) 
@@ -58,11 +61,13 @@ __global__ void initId_kernel(uint32_t * __restrict__ workSpace, const int size,
 * @param size_word Size of one word.
 * @param nb_gen Number of generators.
 */ 
-__global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
+template <typename T>
+__global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
                               int* d_equal, const int size, const int size_word, const int8_t nb_gen);
 
 
-__global__ void compose_kernel(uint32_t* __restrict__ workSpace, const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
+template <typename T>
+__global__ void compose_kernel(T* __restrict__ workSpace, const T* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
                               const int size, const int nb_words, const int size_word, const int8_t nb_gen){
   const int tidy = blockIdx.y*blockDim.y + threadIdx.y;
   const int tidx = blockIdx.x*blockDim.x + threadIdx.x;
@@ -93,7 +98,8 @@ __global__ void compose_kernel(uint32_t* __restrict__ workSpace, const uint32_t*
 }
 
 
-__global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
+template <typename T>
+__global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
                               int* d_equal, const int size, const int size_word, const int8_t nb_gen){
   const int tid = blockIdx.x * blockDim.x + threadIdx.x;
   const int nb_threads = blockDim.x*gridDim.x;
@@ -155,7 +161,8 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
 
 
 #define NB_HASH_FUNC 1
-__global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans){
+template <typename T>
+__global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans){
   // kernel with less operation. Each threads compute a part of the polynome with Horner method.
   // A warp computes a hash.
   // Can compute several hash number based on different prime numbers.
@@ -208,7 +215,8 @@ __global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed
 }
 
 
-__global__ void initId_kernel(uint32_t * __restrict__ workSpace, const int size, const int nb_trans){
+template <typename T>
+__global__ void initId_kernel(T * __restrict__ workSpace, const int size, const int nb_trans){
   const int coefPerThread = (size + warpSize-1) / warpSize;
   const int tidy = blockIdx.y * blockDim.y + threadIdx.y;
   int index;
@@ -234,7 +242,8 @@ __device__ unsigned hash_function_2(unsigned key){ return (7*key+13)%PRIME; }
 __device__ unsigned hash_function_3(unsigned key){ return (11*key+19)%PRIME; }
 __device__ unsigned hash_function_4(unsigned key){ return (13*key+23)%PRIME; }
 
-__device__ bool insert(uint32_t * table, uint32_t key, uint64_t* hashed){
+template <typename T>
+__device__ bool insert(T * table, T key, uint64_t* hashed){
   
   uint64_t location = hashed[0];
   for(int i=0; i<MAX_ITER; i++){

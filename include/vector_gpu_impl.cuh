@@ -210,6 +210,15 @@ size_t Vector_gpu<T>::resize(size_t sizeAttIn, int runType, size_t maxMem){
 	return newCapacity*sizeof(T);
 }
 
+// Explicit instentiation
+template class Vector_cpugpu<int>;
+template class Vector_cpugpu<uint64_t>;
+template class Vector_cpugpu<int8_t>;
+
+template class Vector_gpu<uint64_t>;
+template class Vector_gpu<uint32_t>;
+template class Vector_gpu<uint16_t>;
+template class Vector_gpu<uint8_t>;
 
 #endif  // USE_CUDA
 #endif  // VECTOR_GPU_IMPL_CUH

@@ -25,8 +25,9 @@
 	* @param nb_gen Number of generators.
 	* @param memory Size in bytes of available memory on GPU.
 	*/
-	void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
-					const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
+	template <typename T>
+	void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace, 
+					const T* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 					const int size, const int size_word, const int8_t nb_gen, size_t memory);
 
 	/** @brief Initialize workSpace to identity and hashes identity.
@@ -36,7 +37,8 @@
 	* 		Will be resized if needed to be of size size.
 	* @param size Size of one transformations.
 	*/ 					
-	void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint32_t>& workSpace, const int size);
+	template <typename T>
+	void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<T>& workSpace, const int size);
                            
 	/** @brief Check equality of the resulting transformation of two words.
 	* 		1st stage) key1 and key2 objects contains each one a word.
@@ -54,7 +56,8 @@
 	* @param nb_gen Number of generators.
 	* @param size_word Size of one word.
 	*/ 	
-	bool equal_gpu(const Key& key1, const Key& key2, uint32_t* d_gen, int8_t* d_words,
+	template <typename T>
+	bool equal_gpu(const Key& key1, const Key& key2, T* d_gen, int8_t* d_words,
 					Vector_cpugpu<int>& equal, const int size, const int8_t nb_gen);
 
 	/** @brief Allocate memory on GPU for generators.
@@ -64,7 +67,8 @@
 	* @param nb_gen Number of generators.
 	* @return 1 if tranformations are equal, 0 if not.
 	*/
-	void malloc_gen(uint32_t*& __restrict__ d_gen, const uint32_t* __restrict__ gen, 
+	template <typename T>
+	void malloc_gen(T*& __restrict__ d_gen, const uint64_t* __restrict__ gen, 
 					const int size, const int8_t nb_gen);
 
 	/** @brief Allocate memory on GPU for words comparison.
@@ -74,7 +78,8 @@
 	* @param size Size of one transformations.
 	*/
 	void malloc_words(int8_t*& __restrict__ d_words, const int size);
-	void free_gen(uint32_t*& __restrict__ d_gen);
+	template <typename T>
+	void free_gen(T*& __restrict__ d_gen);
 	void free_words(int8_t*& __restrict__ d_words);
 	
 	/** @brief Set the GPU to use and print informations about it.

@@ -11,8 +11,6 @@
 //~ #define BLOCK_SIZE 4
 #define NB_HASH_FUNC 1
 
-void print_word(std::array<int8_t, NODE>);
-
 class Key
 {
   private :
@@ -39,4 +37,5 @@ void print_ptr_attr( const cudaPointerAttributes& pa ) {
     std::cout << "  devicePointer: " << std::hex << pa.devicePointer << std::endl;
     std::cout << "  hostPointer:   " << pa.hostPointer << std::endl;
 }
+
 #endif  // RENNERGPU
