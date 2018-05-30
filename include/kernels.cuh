@@ -3,13 +3,63 @@
 
 #include <stdint.h>
 #include <stdio.h>
-                              
-__global__ void compose_kernel(uint32_t* __restrict__, const uint32_t* __restrict__, const int8_t* __restrict__,
-                              const int, const int, const int, const int8_t);
 
-__global__ void hash_kernel(uint32_t* __restrict__, uint64_t*, const int, const int);
-__global__ void initId_kernel(uint32_t * __restrict__, const int, const int);
-__global__ void equal_kernel(const int8_t* __restrict__, int*, const int, const int, const int8_t);
+
+/** @brief Compose transformations.
+* @details 1st stage) words array contains nb_words suites of generators (named by there indexes) 
+* 		that are applyed to the identity transformation.
+* 		2d stage) For each resulting transformation one more generator is applyed 
+* 		to compute next generation set of transformation.
+* 		Hence nb_gen transformation are compute for each result of the first stage.
+* 		for a total of nb_words*nb_gen transformations. 
+* @param workSpace Array allocated on GPU of size size*nb_words*nb_gen containing the transformations.
+* @param d_gen Array allocaded on GPU of size size*nb_gen containing the generators.
+* @param d_words Array allocaded on GPU of size size_word*nb_words containing the words.
+* @param size Size of one transformations.
+* @param nb_words Number of words.
+* @param size_word Size of one word.
+* @param nb_gen Number of generators.
+*
+*/      
+__global__ void compose_kernel(uint32_t* __restrict__ workSpace, const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
+                              const int size, const int nb_words, const int size_word, const int8_t nb_gen);
+                              
+/** @brief Compute the hash values of transformations.
+* @details Let be the polynome P : sum e_i * X^i for i in [1, size], 
+* 		where e_i are the transformation coeficients.
+* 		The hash value of a tranformation is the value of the polynome P for X= aPrimeNumber.
+* 		It is computed with the Horner method.
+* @param workSpace Array allocated on GPU of size size*nb_trans containing the transformations.
+* @param d_hashed Array allocaded on GPU of size nb_trans containing the hash value.
+* @param size Size of one transformations.
+* @param nb_trans Number of transformations to hash.
+*
+*/   
+__global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans);
+                           
+/** @brief Initialize workSpace to identity.
+* @param workSpace Array allocated on GPU of size size*nb_trans containing the transformations.
+* @param size Size of one transformations.
+* @param nb_trans Number of transformations to hash.
+*
+*/   
+__global__ void initId_kernel(uint32_t * __restrict__ workSpace, const int size, const int nb_trans);
+                           
+/** @brief Check equality of the resulting transformation of two words.
+* 		1st stage) d_words array contains two suites of generators (named by there indexes) 
+* 		that are applyed to the identity transformation.
+* 		2d stage) The resulting transformation are compared element by element
+* and the number of equal coeficient is stored in d_equal.
+* @param d_gen Array allocaded on GPU of size size*nb_gen containing the generators.
+* @param d_words Array allocaded on GPU of size size_word*nb_words containing the words.
+* @param d_equal Number of equal coeficients.
+* 		Must be equal to size for the transformation to be equals.
+* @param size Size of one transformations.
+* @param size_word Size of one word.
+* @param nb_gen Number of generators.
+*/ 
+__global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
+                              int* d_equal, const int size, const int size_word, const int8_t nb_gen);
 
 
 __global__ void compose_kernel(uint32_t* __restrict__ workSpace, const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
@@ -20,27 +70,23 @@ __global__ void compose_kernel(uint32_t* __restrict__ workSpace, const uint32_t*
   const int nb_threads = blockDim.x*gridDim.x;
   const int coefPerThread = (size + nb_threads-1) / nb_threads;
   const size_t offset = static_cast<size_t>(tidy) * size;
-  int index, indexPerm;
+  int indexInit, index;
   int8_t offset_d_gen;
-  //~ extern __shared__ int8_t shared[];
   
   if(wordId < nb_words){
     for(int coef=0; coef<coefPerThread; coef++){
-      index = tidx + nb_threads*coef;
-      indexPerm = index;
-      if (index < size){
-        // All perm in word  
+      indexInit = tidx + nb_threads*coef;
+      index = indexInit;
+      if (indexInit < size){
+        // Compute all perm in word  
         for(int j=0; j<size_word; j++){
-          //~ if(threadIdx.x == 0)
-            //~ shared[threadIdx.y] = d_words[j + wordId * size_word];
-          //~ __syncthreads();
           offset_d_gen = d_words[j + wordId * size_word];
           if(offset_d_gen > -1)
-            indexPerm = d_gen[indexPerm + offset_d_gen*size];
+            index = d_gen[index + offset_d_gen*size];
         }
-        // Last perm
-        indexPerm = d_gen[indexPerm + (tidy%nb_gen)*size];
-        workSpace[static_cast<size_t>(index) + offset] = indexPerm;
+        // Compute last perm
+        index = d_gen[index + (tidy%nb_gen)*size];
+        workSpace[static_cast<size_t>(indexInit) + offset] = index;
       }
     }
   }
@@ -49,7 +95,6 @@ __global__ void compose_kernel(uint32_t* __restrict__ workSpace, const uint32_t*
 
 __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
                               int* d_equal, const int size, const int size_word, const int8_t nb_gen){
-  // Global thread id and warp id
   const int tid = blockIdx.x * blockDim.x + threadIdx.x;
   const int nb_threads = blockDim.x*gridDim.x;
   const int wid = threadIdx.x / warpSize;
@@ -58,23 +103,21 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
   const int coefPerThread = (size + nb_threads-1) / nb_threads;
   int equal=0;
   int8_t offset_d_gen1, offset_d_gen2;
-
   int indexPerm1, indexPerm2;
+  
+  // Initialize d_equal
   if(tid == 0 && blockIdx.y == 0)
     d_equal[0] = 0;
-
+	// Initialize shared memory
   if(threadIdx.x <32 && blockIdx.y == 0)
     shared[threadIdx.x] = 0;
        
-  // Permutations
+  // Compute all perm in words
   for(int coef=0; coef<coefPerThread; coef++){
     indexPerm1 = tid + nb_threads * coef;
     indexPerm2 = indexPerm1;
     if (indexPerm1 < size){
       for(int j=0; j<size_word; j++){
-        //~ if(tid < 2)
-          //~ shared[32 + tid] = (int)d_words[j + tid*size_word];
-        //~ __syncthreads();
         offset_d_gen1 = d_words[j];
         offset_d_gen2 = d_words[j + size_word];
         if (offset_d_gen1 > -1)
@@ -82,15 +125,16 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
         if (offset_d_gen2 > -1)
             indexPerm2 = d_gen[indexPerm2 + offset_d_gen2 * size]; 
       }
+      // Compare results
       if(indexPerm1 == indexPerm2)
         equal += 1;
     }
   }
 
-  // Reduction
+  // Reduction of comparison result
   for (unsigned int offset = warpSize/2; offset > 0; offset /= 2) 
       equal += __shfl_down(equal, offset);
-      //~ equal += __shfl_down_sync(0xffffffff, equal, offset);
+      //~ equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda 9
 
   if(size > 32 && blockDim.x > 32){
     if (lane == 0)
@@ -101,7 +145,7 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
       __syncthreads();   
       for (unsigned int offset = warpSize/2; offset > 0; offset /= 2) 
           equal += __shfl_down(equal, offset);
-          //~ equal += __shfl_down_sync(0xffffffff, equal, offset);
+          //~ equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda 9
     }
   }
   if(threadIdx.x == 0){
@@ -111,36 +155,38 @@ __global__ void equal_kernel(const uint32_t* __restrict__ d_gen, const int8_t* _
 
 
 #define NB_HASH_FUNC 1
-__global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_vect){
+__global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans){
   // kernel with less operation. Each threads compute a part of the polynome with Horner method.
   // A warp computes a hash.
+  // Can compute several hash number based on different prime numbers.
 
   const int tidy = blockIdx.x * blockDim.x + threadIdx.x;
   const int coefPerThread = (size+blockDim.y-1) / blockDim.y;
   //~ uint64_t primes[NB_HASH_FUNC] = {13, 17, 19, 23};
   uint64_t primes[NB_HASH_FUNC] = {0x9e3779b97f4a7bb9};
-
   uint64_t out[NB_HASH_FUNC];
+  
+  // Compute the lower power of prime that thread is using.
   for(int k=0; k<NB_HASH_FUNC; k++){
     out[k] = 1;
     for (int j=0; j<coefPerThread*threadIdx.y; j++)
       out[k] *= primes[k];
   }
+  
   uint64_t coef=0;
-
-
-  if(threadIdx.y + blockDim.y * 0 < size && tidy < nb_vect){
+  // Initiale compute stage
+  if(threadIdx.y + blockDim.y * 0 < size && tidy < nb_trans){
     coef = workSpace[tidy*size + threadIdx.y + blockDim.y*0];
     for(int k=0; k<NB_HASH_FUNC; k++)
       out[k] *= coef;
   }
   else
     for(int k=0; k<NB_HASH_FUNC; k++)
-      out[k] = 0;
-
+      out[k] = 0;  
   coef=0;
+  // Compute all stage for the Horner method
   for(int i=1; i<coefPerThread; i++){
-    if(threadIdx.y + blockDim.y * i < size && tidy < nb_vect)
+    if(threadIdx.y + blockDim.y * i < size && tidy < nb_trans)
       coef = workSpace[tidy*size + threadIdx.y + blockDim.y*i];
 
     for(int k=0; k<NB_HASH_FUNC; k++){
@@ -162,13 +208,13 @@ __global__ void hash_kernel(uint32_t* __restrict__ workSpace, uint64_t* d_hashed
 }
 
 
-__global__ void initId_kernel(uint32_t * __restrict__ workSpace, const int size, const int nb_vect){
+__global__ void initId_kernel(uint32_t * __restrict__ workSpace, const int size, const int nb_trans){
   const int coefPerThread = (size + warpSize-1) / warpSize;
   const int tidy = blockIdx.y * blockDim.y + threadIdx.y;
   int index;
   for (int j=0; j<coefPerThread; j++){
     index = threadIdx.x + warpSize*j;
-    if(index < size && tidy < nb_vect)
+    if(index < size && tidy < nb_trans)
       workSpace[index + tidy*size] = index;    
   }
 }

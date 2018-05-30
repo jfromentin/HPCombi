@@ -40,7 +40,7 @@ class eqTrans
         d_gen(d_gen), size(size), nb_gen(nb_gen), equal(&equal), d_words(d_words) {}
     bool operator()(const Key& key1, const Key& key2) const
     {
-      return (key1.hashed() == key2.hashed()) && (equal_gpu(key1, key2, d_gen, d_words, size, nb_gen, *equal));
+      return (key1.hashed() == key2.hashed()) && (equal_gpu(key1, key2, d_gen, d_words, *equal, size, nb_gen));
       //~ return key1.hashed() == key2.hashed();
     }
 

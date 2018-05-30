@@ -36,49 +36,51 @@ size_t cudaSetDevice_cpu(){
 	printf("	Clock Rate : %.2f GHz\n", static_cast<float>(prop.clockRate)*1e-6);
 	printf("	MultiProcessor Count : %d\n", prop.multiProcessorCount);
 	printf("	Max Threads Per Block : %d\n", prop.maxThreadsPerBlock);
-	printf("	Max Threads Dim : %d x %d x %d\n", prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
-	printf("	Max Grid Size : %d x %d x %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
+	printf("	Max Threads Dim : %d x %d x %d\n", 
+				prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
+	printf("	Max Grid Size : %d x %d x %d\n", 
+				prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
 	printf("\n");
 	return prop.totalGlobalMem;
 }
 
 
-void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
+void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
+				const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 				const int size, const int size_word, const int8_t nb_gen, size_t memory){
 	//~ cudaProfilerStart();
-	float time;
-	cudaEvent_t start, stop;
-	cudaEventCreate(&start);
-	cudaEventCreate(&stop);
+	//~ float time;
+	//~ cudaEvent_t start, stop;
+	//~ cudaEventCreate(&start);
+	//~ cudaEventCreate(&stop);
 	memory /= 1.05;
 	int nb_words = words.size()/size_word;
-    hashed.resize(static_cast<size_t>(nb_words)*nb_gen * NB_HASH_FUNC, 2);	
-	words.copyHostToDevice();
 	
+	// Divide the size of words to ensure enough memory space is available on the GPU.
 	size_t constMem = words.capacity()*sizeof(int8_t) 
 					+ sizeof(uint32_t)*nb_gen*size_word 
 					+ hashed.resize(static_cast<size_t>(nb_words)*nb_gen * NB_HASH_FUNC, 0);
 	memory -= constMem;
 	size_t varMem = workSpace.resize(static_cast<size_t>(size) * nb_words*nb_gen, 0, memory);
-	//~ printf("varMem : %.2f Mo\n", (float)varMem*1e-6);
 	int div = (varMem + memory-1) / memory;
 	int paquetMax = (nb_words + div-1) / div;
 	int paquet = paquetMax;
 
-	//~ if(workSpace.capacity < static_cast<size_t>(size) * paquetMax*nb_gen){
-		//~ varMem = workSpace.resize(static_cast<size_t>(size) * paquetMax*nb_gen, 0, memory);
-		//~ printf("div : %d, paquet : %d\n", div, paquetMax);
-		//~ printf("Allocating : %.2f Mo, available : %.2f Mo, constMem : %.2f Mo\n", (float)varMem*1e-6, (float)memory*1e-6, (float)constMem*1e-6);
-	//~ }
-	varMem = workSpace.resize(static_cast<size_t>(size) * paquetMax*nb_gen, 1, memory);
+	// Resizing array acoordinglyto avaible memory in GPU and needs.
+	workSpace.resize(static_cast<size_t>(size) * paquetMax*nb_gen, 1, memory);
+    hashed.resize(static_cast<size_t>(nb_words)*nb_gen * NB_HASH_FUNC, 2);
+    
+	words.copyHostToDevice();
 	
-	cudaEventRecord(start);
+	//~ cudaEventRecord(start);
 	for(int pass=0; pass<div; pass++){
 		if(pass == div-1)
 			paquet = nb_words-paquetMax*pass;
-		//~ if(div > 1)
-			//~ printf("pass %d/%d, paquet : %d\n", pass+1, div, paquet);
 		if(paquet > 0){
+			// Grid an dblock configuration must adapt to the number of word to compute 
+			// and to the size of the transformations.
+			// If the number of word to compute is low, transformations are spread through lots of threads.
+			// Where as if number of word to compute is high, transformations are spread trhough few threads.
 			int threadPerPerm = min(size, 16384);
 			dim3 blockPerm, gridPerm;
 			for(int i=0; i<10; i++){
@@ -89,15 +91,12 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
 				if(threadPerPerm < size && gridPerm.y < 65536 && gridPerm.x < pow(2,31))
 					break;
 				threadPerPerm /= 2;
-			}
-			//~ printf("blockPerm.x : %d, blockPerm.y : %d\n", blockPerm.x, blockPerm.y);
-			//~ printf("gridPerm.x : %d, gridPerm.y : %d\n", gridPerm.x, gridPerm.y);
-				//~ compose_kernel<<<gridPerm, blockPerm, size_blocky*sizeof(int8_t)>>>(workSpace.device(), d_gen, words.device(), size, paquet, size_word, nb_gen);		
+			}	
 				compose_kernel<<<gridPerm, blockPerm>>>(workSpace.device(), d_gen, words.device() + pass*paquetMax*size_word, size, paquet, size_word, nb_gen);
 			gpuErrchk( cudaDeviceSynchronize() );
 			gpuErrchk( cudaPeekAtLastError() );
 
-			// blockHash.y must be 1
+			// blockHash.y must be 1, if not reduction through tidy thread is required in kernel.
 			dim3 blockHash(64, 1), gridHash(1, 1);
 			for(int i=0; i<6; i++){
 				if(blockHash.y <= size)
@@ -117,36 +116,34 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
 			hashed.copyDeviceToHost(pass*paquetMax*nb_gen, paquet*nb_gen);
 		}
 	}
-	cudaEventRecord(stop);
-	cudaEventSynchronize(stop);
-	cudaEventElapsedTime(&time, start, stop);
-	time /= 1e3;
+	//~ cudaEventRecord(stop);
+	//~ cudaEventSynchronize(stop);
+	//~ cudaEventElapsedTime(&time, start, stop);
+	//~ time /= 1e3;
 	//~ std::cout << "Time in hpcombi : " << (int)time/3600 << ":" << (int)time%3600/60 << ":" << ((int)time%3600)%60 << std::endl;
 	//~ cudaProfilerStop();
 }
 
-bool equal_gpu(const Key& key1, const Key& key2, uint32_t* d_gen, int8_t* d_words, const int size, const int8_t nb_gen, Vector_cpugpu<int>& equal){
-	//~ cudaProfilerStart();
+bool equal_gpu(const Key& key1, const Key& key2, uint32_t* d_gen, int8_t* d_words,
+				Vector_cpugpu<int>& equal,	const int size, const int8_t nb_gen){
+	// key1.data() are in paged memory.
+	// Time could be saved if they where allocated in pinned memory.
 	gpuErrchk( cudaMemcpy(d_words, key1.data(), NODE * sizeof(int8_t), cudaMemcpyHostToDevice) );
 	gpuErrchk( cudaMemcpy(d_words + NODE, key2.data(), NODE * sizeof(int8_t), cudaMemcpyHostToDevice) );
 
 	const dim3 block(128, 1);
 	const dim3 grid((min(size, 16384) + block.x-1)/block.x, 1);
-	//~ printf("block.x : %d, block.y : %d\n", block.x, block.y);
-	//~ printf("grid.x : %d, grid.y : %d\n", grid.x, grid.y);
 		equal_kernel<<<grid, block>>>(d_gen, d_words, equal.device(), size, NODE, nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 	equal.copyDeviceToHost();
-	//~ printf("size : %d, equal : %d\n", size, equal[0]);
 	const bool out = (equal[0] == size) ? true:false;
-	//~ cudaProfilerStop();
 	return out;
 }
 
 void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint32_t>& workSpace, const int size){
 	workSpace.resize(static_cast<size_t>(size));
-	
+		
 	const dim3 blockInit(32, 4);
 	const dim3 gridInit(1, ( 1 + blockInit.y-1 )/blockInit.y);
 		initId_kernel<<<gridInit, blockInit>>>(workSpace.device(), size, 1);
@@ -158,10 +155,12 @@ void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint32_t>& workSpac
 		hash_kernel<<<grid, block>>>(workSpace.device(), hashed.device(), size, 1);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
+	
 	hashed.copyDeviceToHost();
 }
 
-void malloc_gen(uint32_t*& __restrict__ d_gen, const uint32_t* __restrict__ gen, const int size, const int8_t nb_gen){
+void malloc_gen(uint32_t*& __restrict__ d_gen, const uint32_t* __restrict__ gen, 
+				const int size, const int8_t nb_gen){
 	gpuErrchk( cudaMalloc((void**)&d_gen, size*nb_gen * sizeof(uint32_t)) );
 	gpuErrchk( cudaMemcpy(d_gen, gen, size*nb_gen * sizeof(uint32_t), cudaMemcpyHostToDevice) );	
 }

@@ -40,6 +40,8 @@ void Vector_cpugpu<T>::realloc(){
 	gpuErrchk( cudaMalloc((void**)&deviceAtt, capacityAtt * sizeof(T)) );
 	T* oldHost = hostAtt;
 	gpuErrchk( cudaMallocHost((void**)&hostAtt, capacityAtt * sizeof(T)) );
+	// Only CPU data are copied.
+	// User have to call copyHostToDevice() to copie data to GPU.
 	for(size_t i=0; i<sizeAtt; i++){
 		hostAtt[i] = oldHost[i];
 	}
@@ -190,6 +192,8 @@ size_t Vector_gpu<T>::resize(size_t sizeAttIn, int runType, size_t maxMem){
 	}
 	if(newCapacity < sizeAttIn){
 		float scale = 2;
+		// If the memory consumption is high compared to the maximum avaible memory
+		// the increase in size is smaller to push memory use higher.
 		if(newCapacity*sizeof(T) > maxMem/2)
 			scale = 1.3;
 		while(newCapacity < sizeAttIn)
