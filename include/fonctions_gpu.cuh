@@ -26,7 +26,7 @@
 	* @param memory Size in bytes of available memory on GPU.
 	*/
 	template <typename T>
-	void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace, 
+	void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace, 
 					const T* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 					const int size, const int size_word, const int8_t nb_gen, size_t memory);
 

@@ -7,6 +7,8 @@
 #include <type_traits>
 #include <typeinfo>
 #include <cuda_profiler_api.h>
+#include <chrono>
+using namespace std::chrono;
 
 #include "fonctions_gpu.cuh"
 
@@ -46,7 +48,7 @@ size_t cudaSetDevice_cpu(){
 
 
 template <typename T>
-void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace, 
+void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace, 
 				const T* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 				const int size, const int size_word, const int8_t nb_gen, size_t memory){
 	//~ cudaProfilerStart();
@@ -54,6 +56,7 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 	//~ cudaEvent_t start, stop;
 	//~ cudaEventCreate(&start);
 	//~ cudaEventCreate(&stop);
+  auto tstartCpu = high_resolution_clock::now();
 	memory /= 1.05;
 	int nb_words = words.size()/size_word;
 	
@@ -67,7 +70,7 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 	int paquetMax = (nb_words + div-1) / div;
 	int paquet = paquetMax;
 
-	// Resizing array acoordinglyto avaible memory in GPU and needs.
+	// Resizing array acoordingly to avaible memory in GPU and needs.
 	workSpace.resize(static_cast<size_t>(size) * paquetMax*nb_gen, 1, memory);
     hashed.resize(static_cast<size_t>(nb_words)*nb_gen * NB_HASH_FUNC, 2);
     
@@ -117,6 +120,9 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 			hashed.copyDeviceToHost(pass*paquetMax*nb_gen, paquet*nb_gen);
 		}
 	}
+  auto tfinCpu = high_resolution_clock::now();
+  auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+  timeCH += tmCpu.count();
 	//~ cudaEventRecord(stop);
 	//~ cudaEventSynchronize(stop);
 	//~ cudaEventElapsedTime(&time, start, stop);
@@ -125,11 +131,13 @@ void hpcombi_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 	//~ cudaProfilerStop();
 }
 
+
 template <typename T>
 bool equal_gpu(const Key& key1, const Key& key2, T* d_gen, int8_t* d_words,
 				Vector_cpugpu<int>& equal,	const int size, const int8_t nb_gen){
 	// key1.data() are in paged memory.
 	// Time could be saved if they where allocated in pinned memory.
+	auto tstartCpu = high_resolution_clock::now();
 	gpuErrchk( cudaMemcpy(d_words, key1.data(), NODE * sizeof(int8_t), cudaMemcpyHostToDevice) );
 	gpuErrchk( cudaMemcpy(d_words + NODE, key2.data(), NODE * sizeof(int8_t), cudaMemcpyHostToDevice) );
 
@@ -140,8 +148,14 @@ bool equal_gpu(const Key& key1, const Key& key2, T* d_gen, int8_t* d_words,
 	gpuErrchk( cudaPeekAtLastError() );
 	equal.copyDeviceToHost();
 	const bool out = (equal[0] == size) ? true:false;
+	
+  auto tfinCpu = high_resolution_clock::now();
+  auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+  timeEq += tmCpu.count();
 	return out;
 }
+
+
 
 template <typename T>
 void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<T>& workSpace, const int size){
@@ -186,8 +200,10 @@ void free_words(int8_t*& __restrict__ d_words){
 	gpuErrchk( cudaFree(d_words) );
 }
 
-// Explicit instentiation uint64_t
-template void hpcombi_gpu<uint64_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint64_t>& workSpace, 
+
+
+// Explicit instantiation uint64_t
+template void compHash_gpu<uint64_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint64_t>& workSpace, 
 					const uint64_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 					const int size, const int size_word, const int8_t nb_gen, size_t memory);
 template void hash_id_gpu<uint64_t>(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint64_t>& workSpace, const int size);
@@ -196,8 +212,8 @@ template bool equal_gpu<uint64_t>(const Key& key1, const Key& key2, uint64_t* d_
 template void malloc_gen<uint64_t>(uint64_t*& __restrict__ d_gen, const uint64_t* __restrict__ gen, 
 					const int size, const int8_t nb_gen);
 template void free_gen<uint64_t>(uint64_t*& __restrict__ d_gen);
-// Explicit instentiation uint32_t
-template void hpcombi_gpu<uint32_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
+// Explicit instantiation uint32_t
+template void compHash_gpu<uint32_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint32_t>& workSpace, 
 					const uint32_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 					const int size, const int size_word, const int8_t nb_gen, size_t memory);
 template void hash_id_gpu<uint32_t>(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint32_t>& workSpace, const int size);
@@ -206,8 +222,8 @@ template bool equal_gpu<uint32_t>(const Key& key1, const Key& key2, uint32_t* d_
 template void malloc_gen<uint32_t>(uint32_t*& __restrict__ d_gen, const uint64_t* __restrict__ gen, 
 					const int size, const int8_t nb_gen);
 template void free_gen<uint32_t>(uint32_t*& __restrict__ d_gen);
-// Explicit instentiation uint16_t
-template void hpcombi_gpu<uint16_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint16_t>& workSpace, 
+// Explicit instantiation uint16_t
+template void compHash_gpu<uint16_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint16_t>& workSpace, 
 					const uint16_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 					const int size, const int size_word, const int8_t nb_gen, size_t memory);
 template void hash_id_gpu<uint16_t>(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint16_t>& workSpace, const int size);
@@ -216,8 +232,8 @@ template bool equal_gpu<uint16_t>(const Key& key1, const Key& key2, uint16_t* d_
 template void malloc_gen<uint16_t>(uint16_t*& __restrict__ d_gen, const uint64_t* __restrict__ gen, 
 					const int size, const int8_t nb_gen);
 template void free_gen<uint16_t>(uint16_t*& __restrict__ d_gen);
-// Explicit instentiation uint8_t
-template void hpcombi_gpu<uint8_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint8_t>& workSpace, 
+// Explicit instantiation uint8_t
+template void compHash_gpu<uint8_t>(Vector_cpugpu<int8_t>& words, Vector_gpu<uint8_t>& workSpace, 
 					const uint8_t* __restrict__ d_gen, Vector_cpugpu<uint64_t>& hashed, 
 					const int size, const int size_word, const int8_t nb_gen, size_t memory);
 template void hash_id_gpu<uint8_t>(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<uint8_t>& workSpace, const int size);

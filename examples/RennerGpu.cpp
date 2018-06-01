@@ -27,6 +27,8 @@
 using namespace std;
 using namespace std::chrono;
 
+double timeEq=0;
+double timeCH=0;
 
 template <typename T>
 class eqTransGPU
@@ -40,7 +42,7 @@ class eqTransGPU
   public :
     eqTransGPU(T* d_gen, int8_t* d_words, const int size, const int8_t nb_gen, Vector_cpugpu<int>& equal) :
         d_gen(d_gen), size(size), nb_gen(nb_gen), equal(&equal), d_words(d_words) {}
-    bool operator()(const Key& key1, const Key& key2) const
+    inline bool operator()(const Key& key1, const Key& key2) const
     {
       return (key1.hashed() == key2.hashed()) && (equal_gpu<T>(key1, key2, d_gen, d_words, *equal, size, nb_gen));
       //~ return key1.hashed() == key2.hashed();
@@ -59,6 +61,7 @@ class hash_gpu_class
 template <typename T>
 void renner(int size, int8_t nb_gen, uint64_t* gen);
 
+
 int main(int argc, char* argv[]){
   using namespace std::chrono;
   int size = 10000;
@@ -73,7 +76,7 @@ int main(int argc, char* argv[]){
     fileName = "RenA2";
 	fileName = fileName + ".txt";
   readRenner(fileName, &gen, &size, &nb_gen);
-  printf("Size : %d, sizeof key : %lu bytes\n", size, sizeof(Key));
+  printf("Size : %d, sizeof key : %lu bytes, max nodes : %d\n", size, sizeof(Key), NODE);
 
   if(size<pow(2,8)){
     printf("Using uint8_t for workSpace\n\n");
@@ -115,7 +118,7 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
 
   hash_gpu_class hashG;
   eqTransGPU<T> equalG(d_gen, d_words, size, nb_gen, equal);
-  google::dense_hash_set< Key, hash_gpu_class, eqTransGPU<T> > elems(7000000, hashG, equalG);
+  google::dense_hash_set< Key, hash_gpu_class, eqTransGPU<T> > elems(40000, hashG, equalG);
   
   elems.set_empty_key(empty_key);
 
@@ -129,45 +132,69 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
   elems.insert(id_key);
 
 
-  double timeGpu;
-  double timeCpu=0;
+  double timeTotal=0;
+  double timeIns=0;
+  double timeCon=0;  
+  auto tstart = high_resolution_clock::now();
+  auto tfin = high_resolution_clock::now();
+  auto tm = duration_cast<duration<double>>(tfin - tstart);
+  
   auto tstartGpu = high_resolution_clock::now();
   for(int i=0; i<NODE; i++){
     newtodo.clear();
-    hpcombi_gpu<T>(todo, workSpace, d_gen, hashed, size, NODE, nb_gen, memory);
+    compHash_gpu<T>(todo, workSpace, d_gen, hashed, size, NODE, nb_gen, memory);
     
     for(int j=0; j<todo.size()/NODE*nb_gen; j++){
+      tstart = high_resolution_clock::now();
+        std::array<int8_t, NODE> newWord;
+        for(int k=0; k<NODE; k++)
+          newWord[k] = todo.host()[(j/nb_gen)*NODE + k];    
+        newWord[i] = j%nb_gen;
+        Key new_key(hashed[j * NB_HASH_FUNC], newWord);
+      tfin = high_resolution_clock::now();
+      tm = duration_cast<duration<double>>(tfin - tstart);
+      timeCon += tm.count();
       
-      std::array<int8_t, NODE> newWord;
-      for(int k=0; k<NODE; k++)
-        newWord[k] = todo.host()[(j/nb_gen)*NODE + k];    
-      newWord[i] = j%nb_gen;
-      Key new_key(hashed[j * NB_HASH_FUNC], newWord);
-      auto tstartCpu = high_resolution_clock::now();
-      if(elems.insert(new_key).second){
-        newtodo.push_back(&(newWord[0]), NODE);
-      }
-      auto tfinCpu = high_resolution_clock::now();
-      auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
-      timeCpu += tmCpu.count();
+      tstart = high_resolution_clock::now();
+        if(elems.insert(new_key).second){
+          newtodo.push_back(&(newWord[0]), NODE);
+        }
+      tfin = high_resolution_clock::now();
+      tm = duration_cast<duration<double>>(tfin - tstart);
+      timeIns += tm.count();
     }
 
     todo.swap(&newtodo);  
     auto tfinGpu = high_resolution_clock::now();
     auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
-    timeGpu = tmGpu.count();
+    timeTotal = tmGpu.count();
     cout << i << ", todo = " << todo.size()/NODE << ", elems = " << elems.size()
          << ", #Bucks = " << elems.bucket_count() << ", table size = " 
-         << elems.bucket_count()*sizeof(Key)*1e-6 << " Mo, time : " << std::setprecision(3) 
-         << (int)timeGpu/3600 << ":" << (int)timeGpu%3600/60 << ":" << ((int)timeGpu%3600)%60 << endl;
+         << elems.bucket_count()*sizeof(Key)*1e-6 
+         << " Mo" << endl
+         << "     Timings : Total = " 
+         << (int)timeTotal/3600 << ":" << (int)timeTotal%3600/60 << ":" << ((int)timeTotal%3600)%60
+         << endl << "      insert = " 
+         << (int)timeIns/3600 << ":" << (int)timeIns%3600/60 << ":" << ((int)timeIns%3600)%60
+         << ", " << std::setprecision(3) << timeIns/timeTotal*100
+         << "%      equal = " 
+         << (int)timeEq/3600 << ":" << (int)timeEq%3600/60 << ":" << ((int)timeEq%3600)%60
+         << ", " << std::setprecision(3) << timeEq/timeTotal*100
+         << "%" << endl << "      constr = " 
+         << (int)timeCon/3600 << ":" << (int)timeCon%3600/60 << ":" << ((int)timeCon%3600)%60
+         << ", " << std::setprecision(3) << timeCon/timeTotal*100
+         << "%      compHash = " 
+         << (int)timeCH/3600 << ":" << (int)timeCH%3600/60 << ":" << ((int)timeCH%3600)%60
+         << ", " << std::setprecision(3) << timeCH/timeTotal*100
+         << "%" << endl;
     if(todo.size()/NODE == 0)
       break;
   }
   
   auto tfinGpu = high_resolution_clock::now();
   auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
-  timeGpu = tmGpu.count();
-  printf("Total time : %.3f s, insert : %.3f s\n", timeGpu, timeCpu);
+  timeTotal = tmGpu.count();
+  printf("Total time : %.3f s\n", timeTotal);
   
   cout << "elems =  " << elems.size() << endl;
   free_gen<T>(d_gen);

@@ -210,7 +210,7 @@ size_t Vector_gpu<T>::resize(size_t sizeAttIn, int runType, size_t maxMem){
 	return newCapacity*sizeof(T);
 }
 
-// Explicit instentiation
+// Explicit instantiation
 template class Vector_cpugpu<int>;
 template class Vector_cpugpu<uint64_t>;
 template class Vector_cpugpu<int8_t>;
