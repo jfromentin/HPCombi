@@ -117,7 +117,7 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 			gpuErrchk( cudaDeviceSynchronize() );
 			gpuErrchk( cudaPeekAtLastError() );
 			
-			hashed.copyDeviceToHost(pass*paquetMax*nb_gen, paquet*nb_gen);
+			hashed.copyDeviceToHost(pass*paquetMax*nb_gen * NB_HASH_FUNC, paquet*nb_gen * NB_HASH_FUNC);
 		}
 	}
   auto tfinCpu = high_resolution_clock::now();

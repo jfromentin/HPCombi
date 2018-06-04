@@ -53,7 +53,7 @@ class eqTransGPU
 class hash_gpu_class
 {
   public :
-    bool operator()(const Key& keyIn) const
+    inline bool operator()(const Key& keyIn) const
     {
       return keyIn.hashed();
     }
@@ -114,7 +114,7 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
   std::array<int8_t, NODE> empty_word;
   empty_word.fill(-10);
   
-  Key empty_key(UINT64_MAX, empty_word);
+  Key empty_key(UINT64_MAX, UINT64_MAX, empty_word);
 
   hash_gpu_class hashG;
   eqTransGPU<T> equalG(d_gen, d_words, size, nb_gen, equal);
@@ -128,7 +128,7 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
   id_word.fill(-1);
   todo.push_back(&(id_word[0]), NODE);
     
-  Key id_key(hashed[0], id_word);
+  Key id_key(hashed[0], hashed[1], id_word);
   elems.insert(id_key);
 
 
@@ -150,7 +150,7 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
         for(int k=0; k<NODE; k++)
           newWord[k] = todo.host()[(j/nb_gen)*NODE + k];    
         newWord[i] = j%nb_gen;
-        Key new_key(hashed[j * NB_HASH_FUNC], newWord);
+        Key new_key(hashed[j * NB_HASH_FUNC], hashed[j * NB_HASH_FUNC+1], newWord);
       tfin = high_resolution_clock::now();
       tm = duration_cast<duration<double>>(tfin - tstart);
       timeCon += tm.count();

@@ -160,7 +160,7 @@ __global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restri
 }
 
 
-#define NB_HASH_FUNC 1
+#define NB_HASH_FUNC 2
 template <typename T>
 __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans){
   // kernel with less operation. Each threads compute a part of the polynome with Horner method.
@@ -170,50 +170,75 @@ __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const
   const int tidy = blockIdx.x * blockDim.x + threadIdx.x;
   const int coefPerThread = (size+blockDim.y-1) / blockDim.y;
   //~ uint64_t primes[NB_HASH_FUNC] = {13, 17, 19, 23};
-  uint64_t primes[NB_HASH_FUNC] = {0x9e3779b97f4a7bb9};
+  uint64_t primes[NB_HASH_FUNC] = {0x9e3779b97f4a7bb9, 19};
   uint64_t out[NB_HASH_FUNC];
   
   // Compute the lower power of prime that thread is using.
-  for(int k=0; k<NB_HASH_FUNC; k++){
-    out[k] = 1;
+  //~ for(int k=0; k<NB_HASH_FUNC; k++){
+    out[0] = 1;
+    out[1] = 5381;
     for (int j=0; j<coefPerThread*threadIdx.y; j++)
-      out[k] *= primes[k];
-  }
+      out[0] *= primes[0];
+  //~ }
   
   uint64_t coef=0;
   // Initiale compute stage
   if(threadIdx.y + blockDim.y * 0 < size && tidy < nb_trans){
     coef = workSpace[tidy*size + threadIdx.y + blockDim.y*0];
-    for(int k=0; k<NB_HASH_FUNC; k++)
-      out[k] *= coef;
+    //~ for(int k=0; k<NB_HASH_FUNC; k++)
+      out[0] *= coef;
+      out[1] = ((out[1] << 5) + out[1]) + coef;
   }
   else
-    for(int k=0; k<NB_HASH_FUNC; k++)
-      out[k] = 0;  
+    //~ for(int k=0; k<NB_HASH_FUNC; k++)
+      out[0] = 0;  
+      out[1] = 5384;  
   coef=0;
   // Compute all stage for the Horner method
   for(int i=1; i<coefPerThread; i++){
     if(threadIdx.y + blockDim.y * i < size && tidy < nb_trans)
       coef = workSpace[tidy*size + threadIdx.y + blockDim.y*i];
 
-    for(int k=0; k<NB_HASH_FUNC; k++){
-      out[k] += coef;
-      out[k] *= primes[k];
-    }
+    //~ for(int k=0; k<NB_HASH_FUNC; k++){
+      out[0] += coef;
+      out[0] *= primes[0];
+      out[1] = ((out[1] << 5) + out[1]) + coef;
+    //~ }
 
     coef = 0;
   }
 
-  // Reduction
-  //~ for(int k=0; k<NB_HASH_FUNC; k++)
-    //~ for (int offset = blockDim.y/2; offset > 0; offset /= 2) 
-        //~ out[k] += __shfl_down(out[k], offset);
-
   if(threadIdx.y == 0)
-    for(int k=0; k<NB_HASH_FUNC; k++)
-      d_hashed[NB_HASH_FUNC*tidy + k] = out[k] >> 32;
+    //~ for(int k=0; k<NB_HASH_FUNC; k++)
+      d_hashed[NB_HASH_FUNC*tidy + 0] = out[0] >> 32;
+      d_hashed[NB_HASH_FUNC*tidy + 1] = out[1];
 }
 
+
+//~ template <typename T>
+//~ __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans){
+  //~ // kernel with less operation. Each threads compute a part of the polynome with Horner method.
+  //~ // A warp computes a hash.
+  //~ // Can compute several hash number based on different prime numbers.
+
+  //~ const int tidy = blockIdx.x * blockDim.x + threadIdx.x;
+  //~ const int coefPerThread = (size+blockDim.y-1) / blockDim.y;
+  //~ uint64_t out[NB_HASH_FUNC] = {5381};  
+  //~ uint64_t coef=0;
+  //~ for(int i=1; i<coefPerThread; i++){
+    //~ if(threadIdx.y + blockDim.y * i < size && tidy < nb_trans)
+      //~ coef = workSpace[tidy*size + threadIdx.y + blockDim.y*i];
+    //~ for(int k=0; k<NB_HASH_FUNC; k++)
+      //~ out[k] = ((out[k] << 5) + out[k]) + coef;
+    //~ coef = 0;
+  //~ }
+
+  //~ if(threadIdx.y == 0)
+    //~ for(int k=0; k<NB_HASH_FUNC; k++)
+      //~ d_hashed[NB_HASH_FUNC*tidy + k] = out[k];
+      
+      
+//~ }
 
 template <typename T>
 __global__ void initId_kernel(T * __restrict__ workSpace, const int size, const int nb_trans){
