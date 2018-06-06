@@ -118,7 +118,7 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
 
   hash_gpu_class hashG;
   eqTransGPU<T> equalG(d_gen, d_words, size, nb_gen, equal);
-  google::dense_hash_set< Key, hash_gpu_class, eqTransGPU<T> > elems(40000, hashG, equalG);
+  google::dense_hash_set< Key, hash_gpu_class, eqTransGPU<T> > elems(7000000, hashG, equalG);
   
   elems.set_empty_key(empty_key);
 
@@ -180,12 +180,12 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
          << "%      equal = " 
          << (int)timeEq/3600 << ":" << (int)timeEq%3600/60 << ":" << ((int)timeEq%3600)%60
          << ", " << std::setprecision(3) << timeEq/timeTotal*100
-         << "%" << endl << "      constr = " 
-         << (int)timeCon/3600 << ":" << (int)timeCon%3600/60 << ":" << ((int)timeCon%3600)%60
-         << ", " << std::setprecision(3) << timeCon/timeTotal*100
-         << "%      compHash = " 
-         << (int)timeCH/3600 << ":" << (int)timeCH%3600/60 << ":" << ((int)timeCH%3600)%60
-         << ", " << std::setprecision(3) << timeCH/timeTotal*100
+         //~ << "%" << endl << "      constr = " 
+         //~ << (int)timeCon/3600 << ":" << (int)timeCon%3600/60 << ":" << ((int)timeCon%3600)%60
+         //~ << ", " << std::setprecision(3) << timeCon/timeTotal*100
+         //~ << "%      compHash = " 
+         //~ << (int)timeCH/3600 << ":" << (int)timeCH%3600/60 << ":" << ((int)timeCH%3600)%60
+         //~ << ", " << std::setprecision(3) << timeCH/timeTotal*100
          << "%" << endl;
     if(todo.size()/NODE == 0)
       break;

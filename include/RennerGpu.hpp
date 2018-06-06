@@ -17,22 +17,23 @@ extern double timeCH;
 class Key
 {
   private :
-  //~ uint128_t hashedAtt;
-	  uint64_t hashedAtt;
+		uint128_t hashedAtt;
+	  //~ uint64_t hashedAtt;
 	  //~ uint32_t hashedAtt2;
 	  std::array<int8_t, NODE> wordAtt;
   
   public :
     //~ Key(const uint64_t hashed, const std::array<int8_t, NODE> word) : hashedAtt(hashed), wordAtt(word) {}
     Key(const uint64_t hashed1, const uint64_t hashed2, const std::array<int8_t, NODE> word) : wordAtt(word) {
-      //~ hashedAtt = ((uint128_t)hashed1 >> 64) + hashed2;
-      hashedAtt = hashed1 | hashed2;
+      hashedAtt = (((uint128_t)hashed1 >> 64) + hashed2);
+      //~ hashedAtt = hashed1 ^ hashed2;
       //~ hashedAtt1 = hashed1;
       //~ hashedAtt2 = (uint32_t)hashed2;
       }
     Key(){}// For dense_hash_map
     const int8_t* data() const { return wordAtt.data(); }
-    uint64_t hashed() const { return hashedAtt; }
+    uint128_t hashed() const { return hashedAtt; }
+    //~ uint64_t hashed() const { return hashedAtt; }
     int8_t &operator[](uint64_t i){ return wordAtt[i]; }
     const int8_t &operator[](uint64_t i) const { return wordAtt[i]; }
     
