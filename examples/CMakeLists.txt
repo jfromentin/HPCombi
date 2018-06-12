@@ -25,7 +25,7 @@ endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/include ${PROJECT_BINARY_DIR})
 
-set(usage_examples RD.cpp Renner.cpp stringmonoid.cpp Trans.cpp CF.cpp)
+set(usage_examples RD.cpp Renner.cpp stringmonoid.cpp Trans.cpp CF.cpp RennerCpu.cpp)
 
 
 foreach(f ${usage_examples})
@@ -33,7 +33,7 @@ foreach(f ${usage_examples})
   add_executable (${exampleName} ${f})
   target_compile_options(${exampleName} PUBLIC -mavx -mtune=native -funroll-loops -flax-vector-conversions)
   if(USE_CUDA)
-	target_link_libraries(${exampleName} gpu)
+	target_link_libraries(${exampleName} gpu iotools)
   endif()
 endforeach(f)
 

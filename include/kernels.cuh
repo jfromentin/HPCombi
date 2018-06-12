@@ -189,10 +189,11 @@ __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const
       out[0] *= coef;
       out[1] = ((out[1] << 5) + out[1]) + coef;
   }
-  else
+  else{
     //~ for(int k=0; k<NB_HASH_FUNC; k++)
       out[0] = 0;  
-      out[1] = 5384;  
+      out[1] = 5384;
+  } 
   coef=0;
   // Compute all stage for the Horner method
   for(int i=1; i<coefPerThread; i++){

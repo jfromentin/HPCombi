@@ -16,7 +16,6 @@
 #ifndef HPCOMBI_PERM_GENERIC_HPP
 #define HPCOMBI_PERM_GENERIC_HPP
 
-#include "fonctions_gpu.cuh"
 #include <algorithm>
 #include <array>
 #include <cassert>
