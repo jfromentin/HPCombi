@@ -156,6 +156,32 @@ bool equal_gpu(const Key& key1, const Key& key2, T* d_gen, int8_t* d_words,
 }
 
 
+bool equal_cpu(const Key& key1, const Key& key2, uint64_t* gen, const int size){
+  auto tstartCpu = high_resolution_clock::now();
+  
+  bool result = true;
+  uint64_t* tmp1 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  uint64_t* tmp2 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  for(int i=0; i<size; i++){
+    tmp1[i] = i;
+    tmp2[i] = i;
+    for(int j=0; j<NODE; j++){
+      if(key1[j]>-1)
+        tmp1[i] = gen[tmp1[i] + static_cast<uint64_t>(key1[j])*size];
+      if(key2[j]>-1)
+        tmp2[i] = gen[tmp2[i] + static_cast<uint64_t>(key2[j])*size];
+    }
+    if(tmp1[i] != tmp2[i]){
+      result = false;
+      break;
+    }
+  }
+  
+  auto tfinCpu = high_resolution_clock::now();
+  auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+  timeEq += tmCpu.count();
+  return result;
+}
 
 template <typename T>
 void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<T>& workSpace, const int size){

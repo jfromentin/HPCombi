@@ -50,6 +50,22 @@ class eqTransGPU
 
 };
 
+
+class eqTransCPU
+{
+  private :
+    uint64_t* gen;
+    int size;
+  public :
+    eqTransCPU(uint64_t* gen, const int size) : gen(gen), size(size) {}
+    inline bool operator()(const Key& key1, const Key& key2) const
+    {      
+      return (key1.hashed() == key2.hashed()) && (equal_cpu(key1, key2, gen, size));
+      //~ return key1.hashed() == key2.hashed();
+    }
+
+};
+
 class hash_gpu_class
 {
   public :
@@ -117,8 +133,10 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
   Key empty_key(UINT64_MAX, UINT64_MAX, empty_word);
 
   hash_gpu_class hashG;
-  eqTransGPU<T> equalG(d_gen, d_words, size, nb_gen, equal);
-  google::dense_hash_set< Key, hash_gpu_class, eqTransGPU<T> > elems(7000000, hashG, equalG);
+  //~ eqTransGPU<T> equalG(d_gen, d_words, size, nb_gen, equal);
+  //~ google::dense_hash_set< Key, hash_gpu_class, eqTransGPU<T> > elems(7000000, hashG, equalG);
+  eqTransCPU equalG(gen, size);
+  google::dense_hash_set< Key, hash_gpu_class, eqTransCPU > elems(7000000, hashG, equalG);
   
   elems.set_empty_key(empty_key);
 

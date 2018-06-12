@@ -60,6 +60,8 @@
 	bool equal_gpu(const Key& key1, const Key& key2, T* d_gen, int8_t* d_words,
 					Vector_cpugpu<int>& equal, const int size, const int8_t nb_gen);
 
+	bool equal_cpu(const Key& key1, const Key& key2, uint64_t* gen, const int size);
+
 	/** @brief Allocate memory on GPU for generators.
 	* @param d_gen Allocated array on GPU containing the generators.
 	* @param gen Array on CPU containing the generators.
@@ -87,5 +89,8 @@
 	*/
 	size_t cudaSetDevice_cpu();
 
+
+
+	
 #endif  // USE_CUDA
 #endif  // HPCOMBI_PERM_FONCTIONS_GPU_CUH
