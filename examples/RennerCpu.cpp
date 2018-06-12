@@ -80,7 +80,7 @@ template <typename T, size_t size>
 struct eqTransCPU
 {
   private :
-    vector< VectGeneric<size, T>> gens;
+    vector< VectGeneric<size, T> > gens;
   public :
     eqTransCPU(const vector< VectGeneric<size, T> >& gens) : gens(gens){}
     inline bool operator()(const Key& key1, const Key& key2) const
@@ -101,12 +101,6 @@ class hash_cpu_class
 };
 template <typename T, size_t size>
 void renner(int8_t nb_gen, uint64_t* gen);
-template void renner<int8_t, 2>(int8_t nb_gen, uint64_t* gen);
-template void renner<int8_t, 6>(int8_t nb_gen, uint64_t* gen);
-template void renner<int8_t, 24>(int8_t nb_gen, uint64_t* gen);
-template void renner<int8_t, 120>(int8_t nb_gen, uint64_t* gen);
-template void renner<int16_t, 720>(int8_t nb_gen, uint64_t* gen);
-template void renner<int16_t, 5040>(int8_t nb_gen, uint64_t* gen);
 
 int main(int argc, char* argv[]){
   using namespace chrono;
@@ -146,6 +140,18 @@ int main(int argc, char* argv[]){
   else if(size==5040){
     printf("Using uint16_t for workSpace\n\n");
     renner<uint16_t, 5040>(nb_gen, gen);
+  }
+  else if(size==1546){
+    printf("Using uint16_t for workSpace\n\n");
+    renner<uint16_t, 1546>(nb_gen, gen);
+  }
+  else if(size==13327){
+    printf("Using uint16_t for workSpace\n\n");
+    renner<uint16_t, 13327>(nb_gen, gen);
+  }
+  else if(size==130922){
+    printf("Using uint32_t for workSpace\n\n");
+    renner<uint32_t, 130922>(nb_gen, gen);
   }
   free(gen);
 }

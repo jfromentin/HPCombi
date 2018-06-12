@@ -148,12 +148,40 @@ bool equal_gpu(const Key& key1, const Key& key2, T* d_gen, int8_t* d_words,
 	gpuErrchk( cudaPeekAtLastError() );
 	equal.copyDeviceToHost();
 	const bool out = (equal[0] == size) ? true:false;
-	
+
   auto tfinCpu = high_resolution_clock::now();
   auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
   timeEq += tmCpu.count();
 	return out;
 }
+
+
+//~ bool equal_cpu(const Key& key1, const Key& key2, uint64_t* gen, const int size){
+  //~ auto tstartCpu = high_resolution_clock::now();
+  
+  //~ bool result = true;
+  //~ uint64_t* tmp1 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  //~ uint64_t* tmp2 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  //~ for(int i=0; i<size; i++){
+    //~ tmp1[i] = i;
+    //~ tmp2[i] = i;
+    //~ for(int j=0; j<NODE; j++){
+      //~ if(key1[j]>-1)
+        //~ tmp1[i] = gen[tmp1[i] + static_cast<uint64_t>(key1[j])*size];
+      //~ if(key2[j]>-1)
+        //~ tmp2[i] = gen[tmp2[i] + static_cast<uint64_t>(key2[j])*size];
+    //~ }
+    //~ if(tmp1[i] != tmp2[i]){
+      //~ result = false;
+      //~ break;
+    //~ }
+  //~ }
+
+  //~ auto tfinCpu = high_resolution_clock::now();
+  //~ auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+  //~ timeEq += tmCpu.count();
+  //~ return result;
+//~ }
 
 
 bool equal_cpu(const Key& key1, const Key& key2, uint64_t* gen, const int size){
@@ -162,24 +190,41 @@ bool equal_cpu(const Key& key1, const Key& key2, uint64_t* gen, const int size){
   bool result = true;
   uint64_t* tmp1 = (uint64_t*)malloc(size * sizeof(uint64_t));
   uint64_t* tmp2 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  uint64_t* tmp3 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  uint64_t* tmp4 = (uint64_t*)malloc(size * sizeof(uint64_t));
   for(int i=0; i<size; i++){
     tmp1[i] = i;
     tmp2[i] = i;
+	}
     for(int j=0; j<NODE; j++){
-      if(key1[j]>-1)
-        tmp1[i] = gen[tmp1[i] + static_cast<uint64_t>(key1[j])*size];
-      if(key2[j]>-1)
-        tmp2[i] = gen[tmp2[i] + static_cast<uint64_t>(key2[j])*size];
+        if(key1[j]>-1){
+          for(int i=0; i<size; i++)
+            tmp3[i] = gen[tmp1[i] + static_cast<uint64_t>(key1[j])*size];        
+          for(int i=0; i<size; i++)
+            tmp1[i] = tmp3[i];
+        }
+        if(key2[j]>-1){
+          for(int i=0; i<size; i++)
+            tmp4[i] = gen[tmp2[i] + static_cast<uint64_t>(key2[j])*size];
+          for(int i=0; i<size; i++)
+            tmp2[i] = tmp4[i];
+        }
     }
-    if(tmp1[i] != tmp2[i]){
-      result = false;
-      break;
+    
+    for(int i=0; i<size; i++){
+      if(tmp1[i] != tmp2[i]){
+        result = false;
+        break;
+      }
     }
-  }
-  
+
   auto tfinCpu = high_resolution_clock::now();
   auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
   timeEq += tmCpu.count();
+  free(tmp1);
+  free(tmp2);
+  free(tmp3);
+  free(tmp4);
   return result;
 }
 
