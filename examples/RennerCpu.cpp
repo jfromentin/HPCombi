@@ -34,9 +34,9 @@ double timeCH=0;
 
 void printWord(const array<int8_t, NODE>& word){
   for(int i=0; i<NODE; i++){
-    if(word[i]==-1)
-      break;
     cout << static_cast<int>(word[i]) << "|";
+    if(word[i]<0)
+      break;
   }
   cout << endl;
   }
@@ -52,29 +52,73 @@ uint128_t hash_cpu(const VectGeneric<size, T>& trans){
   return result;
 }
 
+//~ template <typename T, size_t size>
+//~ bool equal_cpu(const Key& key1, const Key& key2, const vector< VectGeneric<size, T> >& gens){
+  //~ auto tstartCpu = high_resolution_clock::now();
+  
+  //~ VectGeneric<size, T> tmp1(0, size);
+  //~ VectGeneric<size, T> tmp2(0, size);
+  //~ for(int j=0; j<NODE; j++){
+    //~ if(key1[j]==-1)
+      //~ break;
+    //~ tmp1 = gens[ key1[j] ].permuted(tmp1);
+  //~ }
+  //~ for(int j=0; j<NODE; j++){
+    //~ if(key2[j]==-1)
+      //~ break;
+    //~ tmp2 = gens[ key2[j] ].permuted(tmp2);
+  //~ }
+  
+  //~ auto tfinCpu = high_resolution_clock::now();
+  //~ auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
+  //~ timeEq += tmCpu.count();
+  //~ return tmp1 == tmp2;
+//~ }
+
 template <typename T, size_t size>
 bool equal_cpu(const Key& key1, const Key& key2, const vector< VectGeneric<size, T> >& gens){
   auto tstartCpu = high_resolution_clock::now();
   
-  VectGeneric<size, T> tmp1(0, size);
-  VectGeneric<size, T> tmp2(0, size);
-  for(int j=0; j<NODE; j++){
-    if(key1[j]==-1)
-      break;
-    tmp1 = gens[ key1[j] ].permuted(tmp1);
-  }
-  for(int j=0; j<NODE; j++){
-    if(key2[j]==-1)
-      break;
-    tmp2 = gens[ key2[j] ].permuted(tmp2);
-  }
-  
+  bool result = true;
+  uint64_t* tmp1 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  uint64_t* tmp2 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  uint64_t* tmp3 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  uint64_t* tmp4 = (uint64_t*)malloc(size * sizeof(uint64_t));
+  for(int i=0; i<size; i++){
+    tmp1[i] = i;
+    tmp2[i] = i;
+	}
+    for(int j=0; j<NODE; j++){
+        if(key1[j]>-1){
+          for(int i=0; i<size; i++)
+            tmp3[i] = gens[ key1[j] ][tmp1[i]];        
+          for(int i=0; i<size; i++)
+            tmp1[i] = tmp3[i];
+        }
+        if(key2[j]>-1){
+          for(int i=0; i<size; i++)
+            tmp4[i] = gens[ key2[j] ][tmp2[i]];
+          for(int i=0; i<size; i++)
+            tmp2[i] = tmp4[i];
+        }
+    }
+    
+    for(int i=0; i<size; i++){
+      if(tmp1[i] != tmp2[i]){
+        result = false;
+        break;
+      }
+    }
+
   auto tfinCpu = high_resolution_clock::now();
   auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
   timeEq += tmCpu.count();
-  return tmp1 == tmp2;
+  free(tmp1);
+  free(tmp2);
+  free(tmp3);
+  free(tmp4);
+  return result;
 }
-
 
 template <typename T, size_t size>
 struct eqTransCPU
@@ -163,8 +207,8 @@ void renner(int8_t nb_gen, uint64_t* gen){
   for(int i=0; i<nb_gen; i++){
     VectGeneric<size, T> tmp;
     for(int j=0; j<size; j++)
-      tmp[j] = gen[j + i*size];
-    gens.push_back(tmp);    
+      tmp[j] = static_cast<T>(gen[j + i*size]);
+    gens.push_back(tmp); 
   }
 
 
@@ -184,13 +228,13 @@ void renner(int8_t nb_gen, uint64_t* gen){
 
   VectGeneric<size, T> id(0, size);
   uint128_t hashed = hash_cpu(id);
+  //~ cout << static_cast<uint64_t>(hashed >> 64) << static_cast<uint64_t>(hashed) << endl;
   array<int8_t, NODE> id_word;
   id_word.fill(-1);
   todo.push_back(id_word);
-    
+
   Key id_key(hashed, id_word);
   elems.insert(id_key);
-
 
   double timeTotal=0;
   double timeIns=0;

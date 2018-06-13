@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include "RennerGpu.hpp"
 
 
 /** @brief Compose transformations.

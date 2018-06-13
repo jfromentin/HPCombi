@@ -17,19 +17,19 @@ extern double timeCH;
 class Key
 {
   private :
-    uint128_t hashedAtt;
-	  std::array<int8_t, NODE> wordAtt;
+    uint128_t _hashed;
+	  std::array<int8_t, NODE> _word;
   
   public :
-    Key(const uint64_t hashed1, const uint64_t hashed2, const std::array<int8_t, NODE> word) : wordAtt(word) {
-      hashedAtt = (((uint128_t)hashed1 >> 64) + hashed2);
+    Key(const uint64_t hashed1, const uint64_t hashed2, const std::array<int8_t, NODE> word) : _word(word) {
+      _hashed = (((uint128_t)hashed1 >> 64) + hashed2);
       }
-    Key(const uint128_t hashed, const std::array<int8_t, NODE> word) : hashedAtt(hashed), wordAtt(word) {}
+    Key(const uint128_t hashed, const std::array<int8_t, NODE> word) : _hashed(hashed), _word(word) {}
     Key(){}// For dense_hash_map
-    const int8_t* data() const { return wordAtt.data(); }
-    uint128_t hashed() const { return hashedAtt; }
-    int8_t &operator[](uint64_t i){ return wordAtt[i]; }
-    const int8_t &operator[](uint64_t i) const { return wordAtt[i]; }
+    const int8_t* data() const { return _word.data(); }
+    uint128_t hashed() const { return _hashed; }
+    int8_t &operator[](uint64_t i){ return _word[i]; }
+    const int8_t &operator[](uint64_t i) const { return _word[i]; }
     
 };
 

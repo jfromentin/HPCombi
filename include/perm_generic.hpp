@@ -64,8 +64,9 @@ template <size_t _Size, typename Expo = uint8_t> struct VectGeneric {
 
   VectGeneric permuted(const VectGeneric &u) const {
     VectGeneric res;
-    for (uint64_t i = 0; i < Size; i++)
+    for (uint64_t i = 0; i < Size; i++){
       res[i] = v[u[i]];
+  }
     return res;
   };
  
@@ -133,14 +134,14 @@ VectGeneric<Size, Expo>::VectGeneric(std::initializer_list<Expo> il, Expo def) {
 
 template <size_t Size, typename Expo>
 VectGeneric<Size, Expo>::VectGeneric(size_t plus, int mod) {
-  mod = (mod<=0) ? Size:mod;
-  for (uint64_t i = 0; i < Size; ++i)
-    v[i] = (i+plus)%mod;
+  size_t modulo = (mod<=0 || mod > Size) ? Size:mod;
+  for (size_t i = 0; i < Size; ++i)
+    v[i] = (i+plus)%modulo;
   if(mod == -1){
 	  std::random_shuffle(v.begin(), v.end());
   }
   else if(mod == -2){
-	  for (uint64_t i = 0; i < Size; ++i)
+	  for (size_t i = 0; i < Size; ++i)
 	    v[i] = rand()%Size;
   }
 }
