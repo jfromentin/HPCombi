@@ -140,8 +140,8 @@ __global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restri
 
   // Reduction of comparison result
   for (unsigned int offset = warpSize/2; offset > 0; offset /= 2) 
-      equal += __shfl_down(equal, offset);
-      //~ equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda 9
+      //~ equal += __shfl_down(equal, offset); // Cuda > 7
+      equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda > 9
 
   if(size > 32 && blockDim.x > 32){
     if (lane == 0)
@@ -151,17 +151,49 @@ __global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restri
       equal = shared[lane];
       __syncthreads();   
       for (unsigned int offset = warpSize/2; offset > 0; offset /= 2) 
-          equal += __shfl_down(equal, offset);
-          //~ equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda 9
+          //~ equal += __shfl_down(equal, offset); // Cuda > 7
+          equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda > 9
     }
   }
   if(threadIdx.x == 0){
     atomicAdd(d_equal, equal);
+	}
 }
-}
+
 
 
 #define NB_HASH_FUNC 2
+template <typename T>
+__global__ void pre_insert_kernel(T* __restrict__ workSpace, uint64_t* d_hashed,
+                                  const int size, const int nb_trans){
+	const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint64_t hash1 = d_hashed[tid*NB_HASH_FUNC];
+	const uint64_t hash2 = d_hashed[tid*NB_HASH_FUNC + 1];
+  uint64_t hash3, hash4;
+  int j=0;
+  if(tid < nb_trans){
+    for(int i=0; i<tid; i++){
+      hash3 = d_hashed[i*NB_HASH_FUNC];
+      hash4 = d_hashed[i*NB_HASH_FUNC + 1];
+      if(hash1 == hash3 && hash2 == hash4){
+        j = 0;
+        for(j=0; j<size; j++){
+          if(workSpace[i*size + j] != workSpace[tid*size + j])
+            break;          
+        }
+        if(j==size){
+          d_hashed[tid*NB_HASH_FUNC] = UINT64_MAX;
+          d_hashed[tid*NB_HASH_FUNC + 1] = UINT64_MAX;
+          break;
+        }
+      }
+    }
+  }
+}
+
+
+
+
 template <typename T>
 __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans){
   // kernel with less operation. Each threads compute a part of the polynome with Horner method.
@@ -268,6 +300,10 @@ __device__ unsigned hash_function_1(unsigned key){ return (5*key+11)%PRIME; }
 __device__ unsigned hash_function_2(unsigned key){ return (7*key+13)%PRIME; }
 __device__ unsigned hash_function_3(unsigned key){ return (11*key+19)%PRIME; }
 __device__ unsigned hash_function_4(unsigned key){ return (13*key+23)%PRIME; }
+//~ __device__ unsigned hash_function_1(unsigned key, uint64_t* d_hashed){ return (5*(*(d_hashed + key))+11)%PRIME; }
+//~ __device__ unsigned hash_function_2(unsigned key, uint64_t* d_hashed){ return (7*(*(d_hashed + key))+13)%PRIME; }
+//~ __device__ unsigned hash_function_3(unsigned key, uint64_t* d_hashed){ return (11*(*(d_hashed + key))+19)%PRIME; }
+//~ __device__ unsigned hash_function_4(unsigned key, uint64_t* d_hashed){ return (13*(*(d_hashed + key))+23)%PRIME; }
 
 template <typename T>
 __device__ bool insert(T * table, T key, uint64_t* hashed){

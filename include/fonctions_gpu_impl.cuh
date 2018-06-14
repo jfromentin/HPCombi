@@ -77,6 +77,8 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 	words.copyHostToDevice();
 	
 	//~ cudaEventRecord(start);
+	if(div>1)
+		std::cout << div << " passage(s)" << std::endl;
 	for(int pass=0; pass<div; pass++){
 		if(pass == div-1)
 			paquet = nb_words-paquetMax*pass;
@@ -96,7 +98,7 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 					break;
 				threadPerPerm /= 2;
 			}	
-				compose_kernel<<<gridPerm, blockPerm>>>(workSpace.device(), d_gen, words.device() + pass*paquetMax*size_word, size, paquet, size_word, nb_gen);
+				compose_kernel<T><<<gridPerm, blockPerm>>>(workSpace.device(), d_gen, words.device() + pass*paquetMax*size_word, size, paquet, size_word, nb_gen);
 			gpuErrchk( cudaDeviceSynchronize() );
 			gpuErrchk( cudaPeekAtLastError() );
 
@@ -112,7 +114,8 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 				if(gridHash.x > pow(2,31) && blockHash.x*blockHash.y < 1024)
 					blockHash.x *= 2;
 			}
-				hash_kernel<<<gridHash, blockHash>>>(workSpace.device(), hashed.device() + pass*paquetMax*nb_gen, size, paquet*nb_gen);
+				hash_kernel<T><<<gridHash, blockHash>>>(workSpace.device(), hashed.device() + pass*paquetMax*nb_gen * NB_HASH_FUNC, size, paquet*nb_gen);
+				pre_insert_kernel<T><<<gridHash, blockHash>>>(workSpace.device(), hashed.device() + pass*paquetMax*nb_gen * NB_HASH_FUNC, size, paquet*nb_gen);
 			
 			gpuErrchk( cudaDeviceSynchronize() );
 			gpuErrchk( cudaPeekAtLastError() );
@@ -143,7 +146,7 @@ bool equal_gpu(const Key& key1, const Key& key2, T* d_gen, int8_t* d_words,
 
 	const dim3 block(128, 1);
 	const dim3 grid((min(size, 16384) + block.x-1)/block.x, 1);
-		equal_kernel<<<grid, block>>>(d_gen, d_words, equal.device(), size, NODE, nb_gen);
+		equal_kernel<T><<<grid, block>>>(d_gen, d_words, equal.device(), size, NODE, nb_gen);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 	equal.copyDeviceToHost();
@@ -234,13 +237,13 @@ void hash_id_gpu(Vector_cpugpu<uint64_t>& hashed, Vector_gpu<T>& workSpace, cons
 		
 	const dim3 blockInit(32, 4);
 	const dim3 gridInit(1, ( 1 + blockInit.y-1 )/blockInit.y);
-		initId_kernel<<<gridInit, blockInit>>>(workSpace.device(), size, 1);
+		initId_kernel<T><<<gridInit, blockInit>>>(workSpace.device(), size, 1);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 
 	const dim3 block(32, 4);
 	const dim3 grid(1, (1 + block.y-1)/block.y);
-		hash_kernel<<<grid, block>>>(workSpace.device(), hashed.device(), size, 1);
+		hash_kernel<T><<<grid, block>>>(workSpace.device(), hashed.device(), size, 1);
 	gpuErrchk( cudaDeviceSynchronize() );
 	gpuErrchk( cudaPeekAtLastError() );
 	

@@ -152,44 +152,46 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
 
   double timeTotal=0;
   double timeIns=0;
-  double timeCon=0;  
   auto tstart = high_resolution_clock::now();
   auto tfin = high_resolution_clock::now();
   auto tm = duration_cast<duration<double>>(tfin - tstart);
   
   auto tstartGpu = high_resolution_clock::now();
+  int nb_double;
   for(int i=0; i<NODE; i++){
+    nb_double = 0;
     newtodo.clear();
     compHash_gpu<T>(todo, workSpace, d_gen, hashed, size, NODE, nb_gen, memory);
     
     for(int j=0; j<todo.size()/NODE*nb_gen; j++){
-      tstart = high_resolution_clock::now();
         std::array<int8_t, NODE> newWord;
         for(int k=0; k<NODE; k++)
           newWord[k] = todo.host()[(j/nb_gen)*NODE + k];    
         newWord[i] = j%nb_gen;
-        Key new_key(hashed[j * NB_HASH_FUNC], hashed[j * NB_HASH_FUNC+1], newWord);
-      tfin = high_resolution_clock::now();
-      tm = duration_cast<duration<double>>(tfin - tstart);
-      timeCon += tm.count();
-      
+        uint64_t hash1 = hashed[j * NB_HASH_FUNC];
+        uint64_t hash2 = hashed[j * NB_HASH_FUNC + 1];
+        Key new_key(hash1, hash2, newWord);
+
       tstart = high_resolution_clock::now();
-        if(elems.insert(new_key).second){
+        if(hash1 == UINT64_MAX && hash2 == UINT64_MAX)
+          nb_double++;
+        else if(elems.insert(new_key).second){
           newtodo.push_back(&(newWord[0]), NODE);
         }
       tfin = high_resolution_clock::now();
       tm = duration_cast<duration<double>>(tfin - tstart);
       timeIns += tm.count();
     }
-
-    todo.swap(&newtodo);  
+  
     auto tfinGpu = high_resolution_clock::now();
     auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
     timeTotal = tmGpu.count();
-    cout << i << ", todo = " << todo.size()/NODE << ", elems = " << elems.size()
+    cout << i << ", todo = " << newtodo.size()/NODE << ", elems = " << elems.size()
          << ", #Bucks = " << elems.bucket_count() << ", table size = " 
-         << elems.bucket_count()*sizeof(Key)*1e-6 
-         << " Mo" << endl
+         << elems.bucket_count()*sizeof(Key)*1e-6
+         << " Mo, doublons : " << nb_double << "/" << todo.size()/NODE*nb_gen
+         << ", " << std::setprecision(2) << (double)nb_double/(todo.size()/NODE*nb_gen)*100 << " %"
+         << endl
          << "     Timings : Total = " 
          << (int)timeTotal/3600 << ":" << (int)timeTotal%3600/60 << ":" << ((int)timeTotal%3600)%60
          << endl << "      insert = " 
@@ -198,15 +200,10 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
          << "%      equal = " 
          << (int)timeEq/3600 << ":" << (int)timeEq%3600/60 << ":" << ((int)timeEq%3600)%60
          << ", " << std::setprecision(3) << timeEq/timeTotal*100
-         //~ << "%" << endl << "      constr = " 
-         //~ << (int)timeCon/3600 << ":" << (int)timeCon%3600/60 << ":" << ((int)timeCon%3600)%60
-         //~ << ", " << std::setprecision(3) << timeCon/timeTotal*100
-         //~ << "%      compHash = " 
-         //~ << (int)timeCH/3600 << ":" << (int)timeCH%3600/60 << ":" << ((int)timeCH%3600)%60
-         //~ << ", " << std::setprecision(3) << timeCH/timeTotal*100
          << "%" << endl;
-    if(todo.size()/NODE == 0)
+    if(newtodo.size()/NODE == 0)
       break;
+    todo.swap(&newtodo);
   }
   
   auto tfinGpu = high_resolution_clock::now();
