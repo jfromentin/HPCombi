@@ -113,10 +113,10 @@ __global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restri
   int indexPerm1, indexPerm2;
   
   // Initialize d_equal
-  if(tid == 0 && blockIdx.y == 0)
+  if(tid == 0)
     d_equal[0] = 0;
 	// Initialize shared memory
-  if(threadIdx.x <32 && blockIdx.y == 0)
+  if(threadIdx.x <32)
     shared[threadIdx.x] = 0;
        
   // Compute all perm in words
@@ -163,33 +163,64 @@ __global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restri
 
 
 #define NB_HASH_FUNC 2
+
+//~ template <typename T>
+//~ __global__ void pre_insert_kernel(T* __restrict__ workSpace, uint64_t* d_hashed,
+                                  //~ const int size, const int nb_trans,
+                                  //~ int* d_equal){
+	//~ const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	//~ const uint64_t hash1 = d_hashed[tid*NB_HASH_FUNC];
+	//~ const uint64_t hash2 = d_hashed[tid*NB_HASH_FUNC + 1];
+  //~ uint64_t hash3, hash4;
+  //~ int j=0;
+  //~ if(tid < nb_trans){
+    //~ for(int i=0; i<tid; i++){
+      //~ hash3 = d_hashed[i*NB_HASH_FUNC];
+      //~ hash4 = d_hashed[i*NB_HASH_FUNC + 1];
+      //~ if(hash1 == hash3 && hash2 == hash4){
+        //~ j = 0;
+        //~ for(j=0; j<size; j++){
+          //~ if(workSpace[i*size + j] != workSpace[tid*size + j])
+            //~ break;          
+        //~ }
+        //~ if(j==size){
+          //~ d_hashed[tid*NB_HASH_FUNC] = UINT64_MAX;
+          //~ d_hashed[tid*NB_HASH_FUNC + 1] = UINT64_MAX;
+          //~ break;
+        //~ }
+      //~ }
+    //~ }
+  //~ }
+//~ }
+
 template <typename T>
 __global__ void pre_insert_kernel(T* __restrict__ workSpace, uint64_t* d_hashed,
                                   const int size, const int nb_trans){
-	const int tid = blockIdx.x * blockDim.x + threadIdx.x;
-	const uint64_t hash1 = d_hashed[tid*NB_HASH_FUNC];
-	const uint64_t hash2 = d_hashed[tid*NB_HASH_FUNC + 1];
+	const int tidx = blockIdx.x * blockDim.x + threadIdx.x;
+	const uint64_t hash1 = d_hashed[tidx*NB_HASH_FUNC];
+	const uint64_t hash2 = d_hashed[tidx*NB_HASH_FUNC + 1];
   uint64_t hash3, hash4;
-  int j=0;
-  if(tid < nb_trans){
-    for(int i=0; i<tid; i++){
+  int equal = 0;
+  if(tidx < nb_trans){
+    for(int i=0; i<tidx; i++){
       hash3 = d_hashed[i*NB_HASH_FUNC];
       hash4 = d_hashed[i*NB_HASH_FUNC + 1];
       if(hash1 == hash3 && hash2 == hash4){
-        j = 0;
-        for(j=0; j<size; j++){
-          if(workSpace[i*size + j] != workSpace[tid*size + j])
-            break;          
+        equal = 0;
+        for(int j=0; j<size; j++){
+          if(workSpace[i*size + j] == workSpace[tidx*size + j])
+            equal += 1;          
         }
-        if(j==size){
-          d_hashed[tid*NB_HASH_FUNC] = UINT64_MAX;
-          d_hashed[tid*NB_HASH_FUNC + 1] = UINT64_MAX;
+        if(equal==size){
+          d_hashed[tidx*NB_HASH_FUNC] = UINT64_MAX;
+          d_hashed[tidx*NB_HASH_FUNC + 1] = UINT64_MAX;
           break;
         }
       }
     }
   }
 }
+
 
 
 
