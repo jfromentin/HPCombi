@@ -117,8 +117,8 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 				hash_kernel<T><<<gridHash, blockHash>>>(workSpace.device(), hashed.device() + pass*paquetMax*nb_gen * NB_HASH_FUNC, size, paquet*nb_gen);
 				
 
-				dim3 blockPre(64, 1), gridPre((paquet*nb_gen + blockPre.x-1)/blockPre.x, 1);
-				pre_insert_kernel<T><<<gridPre, blockPre>>>(workSpace.device(), hashed.device() + pass*paquetMax*nb_gen * NB_HASH_FUNC, size, paquet*nb_gen);
+				//~ dim3 blockPre(64, 1), gridPre((paquet*nb_gen + blockPre.x-1)/blockPre.x, 1);
+				pre_insert_kernel<T><<<gridHash, blockHash>>>(workSpace.device(), hashed.device() + pass*paquetMax*nb_gen * NB_HASH_FUNC, size, paquet*nb_gen);
 			
 			gpuErrchk( cudaDeviceSynchronize() );
 			gpuErrchk( cudaPeekAtLastError() );
