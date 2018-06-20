@@ -38,7 +38,7 @@ size_t cudaSetDevice_cpu(){
 	printf("	Clock Rate : %.2f GHz\n", static_cast<float>(prop.clockRate)*1e-6);
 	printf("	MultiProcessor Count : %d\n", prop.multiProcessorCount);
 	printf("	Max Threads Per Block : %d\n", prop.maxThreadsPerBlock);
-	printf("	Max Threads Dim : %d x %d x %d\n", 
+	printf("	Max Block Dim : %d x %d x %d\n", 
 				prop.maxThreadsDim[0], prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
 	printf("	Max Grid Size : %d x %d x %d\n", 
 				prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
