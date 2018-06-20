@@ -1,0 +1,113 @@
+\newglossary[tlg]{noprint}{tld}{tdn}{NoPrint}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%CUDA/GPU
+\newglossaryentry{cpu}{ name=CPU, text=CPU, first=CPU (\emph{Central Processing Unit}), description={Central Processing Unit} }
+\newglossaryentry{gpu}{ name=GPU, text=GPU, first=GPU (\emph{Graphics Processing Unit}), description={Graphics Processing Unit} }
+\newglossaryentry{GPU}{ type=noprint, name=GPU, text=GPU, first=GPU (\emph{Graphics Processing Unit}), description={} }
+\newglossaryentry{cuda}{ name=CUDA, text=CUDA, first=CUDA (\emph{Compute Unified Device Architecture}), description={Compute Unified Device Architecture} }
+\newglossaryentry{api}{ name=API, text=API, first=\emph{Application Programming Interface} (API), description={Application Programming Interface} }
+\newglossaryentry{apicuda}{ name=\gls{api} \gls{cuda}, text=\gls{api} \gls{cuda}, first=\gls{api} \gls{cuda}, description={\gls{api} \gls{cuda}} }
+\newglossaryentry{nvcc}{ type=noprint, name=NVCC, description={} }
+\newglossaryentry{cublas}{ type=noprint, name=CUBLAS, text=CUBLAS, first=CUBLAS \cite{cublas}, description={} }
+\newglossaryentry{cub}{ type=noprint, name=CUB, text=CUB, first=CUB \cite{cub}, description={} }
+\newglossaryentry{magma}{ type=noprint, name=MAGMA, text=MAGMA, first=MAGMA \cite{magma}, description={} }
+\newglossaryentry{cusparse}{ type=noprint, name=CUSPARSE, text=CUSPARSE, first=CUSPARSE \cite{cusparse}, description={} }
+\newglossaryentry{cusolver}{ type=noprint, name=CUSOLVER, text=CUSOLVER, first=CUSOLVER \cite{cusolver}, description={} }
+\newglossaryentry{libonera}{ type=noprint, name=ONERA, text=ONERA, first=ONERA \cite{libonera}, description={} }
+\newacronym{smx}{SMX}{\emph{Streaming Multiprocessor}}
+\newglossaryentry{kernel}{ name=kernel, text=kernel, first=noyau de calcul (kernel), description={noyau de calcul}, plural={kernels}, firstplural={Noyaux de calculs (kernels)} }
+\newglossaryentry{mg}{ name=mémoire globale, description={Mémoire globale \gls{gpu}} }
+\newglossaryentry{reg}{ name=registre, description={Mémoire interne a un \gls{cpu}} }
+\newglossaryentry{shared}{ name=mémoire partagée, description={Mémoire partagée dans un \gls{bloc} de \glspl{th} d'un \gls{gpu}} }
+\newglossaryentry{th}{ name=thread, plural=threads, description={Exécution d'un ensemble d'instructions} }
+\newglossaryentry{bloc}{ name=bloc, plural=blocs, description={Bloc de \glspl{th} d'un \gls{gpu}} }
+\newglossaryentry{warp}{ name=warp, plural=warps, description={Ensemble de 32 \glspl{th} d'un \gls{gpu}} }
+\newglossaryentry{grid}{ name=grille, plural=grilles, description={Ensemble de \gls{bloc} d'un \gls{gpu}} }
+\newglossaryentry{nvidia}{ type=noprint, name=NVIDIA, description={} }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%Optique
+\newacronym{oa}{OA}{Optique Adaptative}
+\newacronym{OA}{OA}{Optique Adaptative}
+\newacronym{vlt}{VLT}{Very Large Telescope}
+\newacronym{eelt}{E-ELT}{European Extremely Large Telescope}
+\newglossaryentry{sphere}{ type=noprint, name=SPHERE, text=SPHERE, first=SPHERE \cite{beuzit2008sphere}, description={} }
+\newglossaryentry{eeltb}{ type=noprint, name=\gls{eelt} "basique", description={} }
+\newglossaryentry{eelte}{ type=noprint, name=\gls{eelt} "extrême", description={} }
+\newglossaryentry{vlts}{ type=noprint, name=\gls{vlt} \gls{sphere}, description={} }
+\newglossaryentry{md}{ type=noprint, name=miroir déformable, plural=miroirs déformables, description={} }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%Officiel
+\newacronym{cnrs}{CNRS}{\emph{Centre National de la Recherche Scientifique}}
+\newacronym{lri}{LRI}{\emph{Laboratoire de Recherche en Informatique}}
+\newacronym{onera}{ONERA}{\emph{Office National d'Etudes et de Recherches Aérospatiales}}
+\newacronym{onerad}{ONERA}{Office National d'Etudes et de Recherches Aérospatiales}
+\newacronym{iogs}{IOGS}{Institut d'Optique Graduate School}
+\newglossaryentry{anr}{ type=noprint, name=Agence Nationale de la Recherche, description={} }
+\newacronym{compote}{COMPOTE}{\emph{COmmande Massivement Parallélisable pour les Optiques adaptatives des TElescopes géants}}
+\newglossaryentry{eso}{ type=noprint, name=Observatoire Européen Austral, description={Observatoire Européen Austral} }
+\newglossaryentry{safran}{ type=noprint, name=Safran, description={} }
+\newglossaryentry{thales}{ type=noprint, name=Thales, description={} }
+\newglossaryentry{airbus}{ type=noprint, name=Airbus, description={} }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%ONERA
+\newacronym{dtis}{DTIS}{Département du Traitement de l’Information et Systèmes}
+\newacronym{daaa}{DAAA}{Département de l'Aérodynamique, l'Aéroélasticité et l'Acoustique}
+\newacronym{dmas}{DMAS}{Département des MAtériaux et Structures}
+\newacronym{dmpe}{DMPE}{Département de la Multi-Physique pour l'Energétique}
+\newacronym{demr}{DEMR}{Département de l'ÉlectroMagnétisme et des Radar}
+\newacronym{dota}{DOTA}{Département de l'Optique et des Techniques Associées}
+\newacronym{dphiee}{DPhIEE}{Département de la Physique, l'Instrumentation, l'Environnement et l'Espace}
+\newacronym{chpu}{CHP}{Calcul Haute Performance}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%Informatique
+\newglossaryentry{chp}{ type=noprint, name=calcul haute performance, description={} }
+\newglossaryentry{pref}{ name=prefetching, description={Principe de programmation permettant de recouvrir les accès aux mémoires par des calculs} }
+\newglossaryentry{algo}{ type=noprint, name=algorithme, description={} }
+\newglossaryentry{mcdram}{ type=noprint, name=MCDRAM, text=MCDRAM, first=MCDRAM, description={} }
+\newglossaryentry{alu}{ name=ALU, text=ALU, first=\emph{unité arithmétique et logique} (ALU), description={Unité arithmétique et logique}, plural={ALU}, firstplural={\emph{unités arithmétiques et logiques} (ALU)} }
+\newglossaryentry{simt}{ name=SIMT, text=SIMT, first=SIMT (Single Instruction Multiple Threads) \cite{lindholm2008nvidia}, description={Single Instruction Multiple Threads} }
+\newglossaryentry{host}{ type=noprint, name=hôte, description={} }
+\newglossaryentry{coproc}{ type=noprint, name=coprocesseur, description={} }
+\newglossaryentry{openmp}{ type=noprint, name=OpenMP, description={} }
+\newglossaryentry{ram}{ type=noprint, name=RAM, description={} }
+\newacronym{avx}{AVX}{Advanced Vector Extensions}
+\newglossaryentry{restrict}{ type=noprint, name=\emph{restrict}, description={} }
+\newglossaryentry{unroll}{ type=noprint, name=\emph{unroll}, description={déroulage de boucle} }
+\newglossaryentry{double2}{ type=noprint, name=\emph{double2}, description={Type vectoriel} }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%Algebre
+\newacronym{svd}{SVD}{Décomposition en Valeurs Singulières}
+\newglossaryentry{pmv}{ type=noprint, name=produit matrice-vecteur, plural=produits matrice-vecteur, description={} }
+\newglossaryentry{pmvs}{ type=noprint, name=produit matrice-vecteur creux, description={} }
+\newglossaryentry{pmm}{ type=noprint, name=produit matrice-matrice, description={} }
+\newglossaryentry{ellpack}{ name=ELLPACK, text=ELLPACK, first=ELLPACK \cite{bell2008efficient}, description={Format de stockage compressé de matrices creuses} }
+\newglossaryentry{csr}{ name=CSR, text=CSR, first=CSR \cite{bell2008efficient}, description={Format de stockage compressé de matrices creuses} }
+\newglossaryentry{csc}{ name=CSC, text=CSC, first=CSC , description={Format de stockage compressé de matrices creuses} }
+\newglossaryentry{coo}{ name=COO, text=COO, first=COO \cite{bell2008efficient}, description={Format de stockage compressé de matrices creuses} }
+\newacronym{blas}{BLAS}{Basic Linear Algebra Subprograms}
+\newglossaryentry{chol}{ type=noprint, name=factorisation de Cholesky, description={} }
+\newglossaryentry{gc}{ type=noprint, name=gradient conjugué, description={} }
+\newglossaryentry{qr}{ type=noprint, name=factorisation QR, description={} }
+\newglossaryentry{rbt}{ name=RBT, text=RBT, first=RBT (Random Butterfly Transformation) \cite{baboulin2013accelerating}, description={} }
+\newglossaryentry{petsc}{ name=PETSc, text=PETSc, first=PETSc (Portable Extensible Toolkit for Scientific Computation) \cite{petsc-web-page}, description={} }
+\newglossaryentry{parms}{ name=pARMS, text=pARMS, first=\href{http://www-users.cs.umn.edu/~saad/software/pARMS/}{pARMS} (parallel Algebraic Recursive Multilevel Solvers) \cite{Saad-Suchomel-ARMS-REVIS-TR}, description={} }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%Hardware
+\newglossaryentry{opt6282}{ type=noprint, name=AMD Opteron 6282, text=Opteron 6282, first=AMD Opteron 6282 (2011) , description={} }
+\newglossaryentry{p100}{ type=noprint, name=\gls{nvidia} P100, text=P100, first=\gls{nvidia} Tesla P100 (2016) , description={} }
+\newglossaryentry{v100}{ type=noprint, name=\gls{nvidia} V100, text=V100, first=\gls{nvidia} Tesla V100 (2017) , description={} }
+\newglossaryentry{k20}{ type=noprint, name=\gls{nvidia} K20, text=K20, first=\gls{nvidia} Tesla K20 (2012) , description={} }
+\newglossaryentry{k20x}{ type=noprint, name=\gls{nvidia} K20Xm, text=K20Xm, first=\gls{nvidia} Tesla K20Xm (2012) , description={} }
+\newglossaryentry{k40}{ type=noprint, name=\gls{nvidia} K40, text=K40, first=\gls{nvidia} Tesla K40 (2013) , description={} }
+\newglossaryentry{k80}{ type=noprint, name=\gls{nvidia} K80, text=K80, first=\gls{nvidia} Tesla K80 (2014) , description={} }
+\newglossaryentry{xeonphi}{ type=noprint, name=Intel Xeon Phi, text=Xeon Phi, first=Intel Xeon Phi, description={} }
+\newglossaryentry{e52680}{ type=noprint, name=Intel Xeon E5-2680 v4, text=Xeon E5-2680 v4, first=Intel Xeon E5-2680 v4 (2016) , description={} }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%SoftError
+\newglossaryentry{bf}{ name=BF, text=BF, first=Bit flip (BF) \cite{elliott2013quantifying}, description={} }
+\newglossaryentry{nsfm}{ name=NSFM, text=NSFM, first=Numerical Soft Fault Model (NSFM) \cite{elliott2015numerical}, description={} }
+\newglossaryentry{pbsfm}{ name=PBSFM, text=PBSFM, first=Perturbation Based Soft Fault Model (PBSFM) \cite{coleman2016evaluating}, description={} }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%MISC
+
+\makeglossaries
