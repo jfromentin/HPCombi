@@ -28,9 +28,10 @@ size_t cudaSetDevice_cpu(){
 	int count=0;
 	cudaGetDeviceCount(&count);
 	printf("GPU count : %d\n", count);
-	cudaSetDevice(count-1);
+	int device = 2;
+	cudaSetDevice(device);
 	cudaDeviceProp prop;
-	cudaGetDeviceProperties(&prop, count-1);
+	cudaGetDeviceProperties(&prop, device);
 	printf("%s :\n", prop.name); 
 	printf("	Global memory available : %.2f Go\n", static_cast<float>(prop.totalGlobalMem)*1e-9); 
 	printf("	Shared memory per block : %.2f Ko\n", static_cast<float>(prop.sharedMemPerBlock)*1e-3);

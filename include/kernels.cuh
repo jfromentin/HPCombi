@@ -140,8 +140,8 @@ __global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restri
 
   // Reduction of comparison result
   for (unsigned int offset = warpSize/2; offset > 0; offset /= 2) 
-      //~ equal += __shfl_down(equal, offset); // Cuda > 7
-      equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda > 9
+      equal += __shfl_down(equal, offset); // Cuda > 7
+      //~ equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda > 9
 
   if(size > 32 && blockDim.x > 32){
     if (lane == 0)
@@ -151,8 +151,8 @@ __global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restri
       equal = shared[lane];
       __syncthreads();   
       for (unsigned int offset = warpSize/2; offset > 0; offset /= 2) 
-          //~ equal += __shfl_down(equal, offset); // Cuda > 7
-          equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda > 9
+          equal += __shfl_down(equal, offset); // Cuda > 7
+          //~ equal += __shfl_down_sync(0xffffffff, equal, offset); // Cuda > 9
     }
   }
   if(threadIdx.x == 0){
