@@ -31,11 +31,24 @@
 *.out
 *.app
 
-# Python compiled file
+# Python compiled files
 *.pyc
 
-# PDF file
+# PDF files
 *.pdf
+
+# Tex compilation files
+*.aux
+*.bbl
+*.blg
+*.glo
+*.ist
+*.log
+*.synctex.gz
+*.tdn
+*.toc
+*.bak
+
 
 TAGS
 build
