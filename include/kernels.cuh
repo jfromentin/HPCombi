@@ -25,7 +25,23 @@
 template <typename T>
 __global__ void compose_kernel(T* __restrict__ workSpace, const T* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
                               const int size, const int nb_words, const int size_word, const int8_t nb_gen);
-                              
+									                                
+/** @brief tests if a transformation has been computed several times.
+* @details A thread is associated with a one transformation. 
+* 		It tests if the transformation exist among the previous ones.
+* 		The hash values are tested first, if equal, the transformations are compared 
+* 		componenet by component.
+* @param workSpace Array allocated on GPU of size size*nb_trans containing the transformations.
+* @param d_hashed Array allocaded on GPU of size nb_trans containing the hash value.
+* @param size Size of one transformations.
+* @param nb_trans Number of transformations to hash.
+*
+*/
+template <typename T>
+__global__ void pre_insert_kernel(T* __restrict__ workSpace, uint64_t* d_hashed,
+                                  const int size, const int nb_trans){
+									  
+									                                
 /** @brief Compute the hash values of transformations.
 * @details Let be the polynome P : sum e_i * X^i for i in [1, size], 
 * 		where e_i are the transformation coeficients.
@@ -164,34 +180,6 @@ __global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restri
 
 #define NB_HASH_FUNC 2
 
-//~ template <typename T>
-//~ __global__ void pre_insert_kernel(T* __restrict__ workSpace, uint64_t* d_hashed,
-                                  //~ const int size, const int nb_trans,
-                                  //~ int* d_equal){
-	//~ const int tid = blockIdx.x * blockDim.x + threadIdx.x;
-	//~ const uint64_t hash1 = d_hashed[tid*NB_HASH_FUNC];
-	//~ const uint64_t hash2 = d_hashed[tid*NB_HASH_FUNC + 1];
-  //~ uint64_t hash3, hash4;
-  //~ int j=0;
-  //~ if(tid < nb_trans){
-    //~ for(int i=0; i<tid; i++){
-      //~ hash3 = d_hashed[i*NB_HASH_FUNC];
-      //~ hash4 = d_hashed[i*NB_HASH_FUNC + 1];
-      //~ if(hash1 == hash3 && hash2 == hash4){
-        //~ j = 0;
-        //~ for(j=0; j<size; j++){
-          //~ if(workSpace[i*size + j] != workSpace[tid*size + j])
-            //~ break;          
-        //~ }
-        //~ if(j==size){
-          //~ d_hashed[tid*NB_HASH_FUNC] = UINT64_MAX;
-          //~ d_hashed[tid*NB_HASH_FUNC + 1] = UINT64_MAX;
-          //~ break;
-        //~ }
-      //~ }
-    //~ }
-  //~ }
-//~ }
 
 template <typename T>
 __global__ void pre_insert_kernel(T* __restrict__ workSpace, uint64_t* d_hashed,
@@ -205,10 +193,12 @@ __global__ void pre_insert_kernel(T* __restrict__ workSpace, uint64_t* d_hashed,
     for(int i=0; i<tidx; i++){
       hashComp1 = d_hashed[i*NB_HASH_FUNC + 0];
       hashComp2 = d_hashed[i*NB_HASH_FUNC + 1];
+      // Compare the hash values first
       if(hashRef1 == hashComp1 && hashRef2 == hashComp2){
         equal = 0;
+        // Compare the transformations
         for(int j=0; j<size; j++){
-          if(workSpace[i*size + j] == workSpace[tidx*size + j])
+          if(workSpace[static_cast<size_t>(i)*size + j] == workSpace[static_cast<size_t>(tidx)*size + j])
             equal += 1;          
         }
         if(equal==size){
@@ -248,7 +238,7 @@ __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const
   uint64_t coef=0;
   // Initiale compute stage
   if(threadIdx.y + blockDim.y * 0 < size && tidx < nb_trans){
-    coef = workSpace[tidx*size + threadIdx.y + blockDim.y*0];
+    coef = workSpace[static_cast<size_t>(tidx)*size + threadIdx.y + blockDim.y*0];
     //~ for(int k=0; k<NB_HASH_FUNC; k++)
       out[0] *= coef;
       out[1] = ((out[1] << 5) + out[1]) + coef;
@@ -262,7 +252,7 @@ __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const
   // Compute all stage for the Horner method
   for(int i=1; i<coefPerThread; i++){
     if(threadIdx.y + blockDim.y * i < size && tidx < nb_trans)
-      coef = workSpace[tidx*size + threadIdx.y + blockDim.y*i];
+      coef = workSpace[static_cast<size_t>(tidx)*size + threadIdx.y + blockDim.y*i];
 
     //~ for(int k=0; k<NB_HASH_FUNC; k++){
       out[0] += coef;
@@ -280,31 +270,6 @@ __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const
 }
 
 
-//~ template <typename T>
-//~ __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const int size, const int nb_trans){
-  //~ // kernel with less operation. Each threads compute a part of the polynome with Horner method.
-  //~ // A warp computes a hash.
-  //~ // Can compute several hash number based on different prime numbers.
-
-  //~ const int tidy = blockIdx.x * blockDim.x + threadIdx.x;
-  //~ const int coefPerThread = (size+blockDim.y-1) / blockDim.y;
-  //~ uint64_t out[NB_HASH_FUNC] = {5381};  
-  //~ uint64_t coef=0;
-  //~ for(int i=1; i<coefPerThread; i++){
-    //~ if(threadIdx.y + blockDim.y * i < size && tidy < nb_trans)
-      //~ coef = workSpace[tidy*size + threadIdx.y + blockDim.y*i];
-    //~ for(int k=0; k<NB_HASH_FUNC; k++)
-      //~ out[k] = ((out[k] << 5) + out[k]) + coef;
-    //~ coef = 0;
-  //~ }
-
-  //~ if(threadIdx.y == 0)
-    //~ for(int k=0; k<NB_HASH_FUNC; k++)
-      //~ d_hashed[NB_HASH_FUNC*tidy + k] = out[k];
-      
-      
-//~ }
-
 template <typename T>
 __global__ void initId_kernel(T * __restrict__ workSpace, const int size, const int nb_trans){
   const int coefPerThread = (size + warpSize-1) / warpSize;
@@ -313,7 +278,7 @@ __global__ void initId_kernel(T * __restrict__ workSpace, const int size, const 
   for (int j=0; j<coefPerThread; j++){
     index = threadIdx.x + warpSize*j;
     if(index < size && tidy < nb_trans)
-      workSpace[index + tidy*size] = index;    
+      workSpace[index + static_cast<size_t>(tidy)*size] = index;    
   }
 }
 
