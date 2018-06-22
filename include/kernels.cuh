@@ -39,7 +39,7 @@ __global__ void compose_kernel(T* __restrict__ workSpace, const T* __restrict__ 
 */
 template <typename T>
 __global__ void pre_insert_kernel(T* __restrict__ workSpace, uint64_t* d_hashed,
-                                  const int size, const int nb_trans){
+                                  const int size, const int nb_trans);
 									  
 									                                
 /** @brief Compute the hash values of transformations.

@@ -28,7 +28,7 @@ size_t cudaSetDevice_cpu(){
 	int count=0;
 	cudaGetDeviceCount(&count);
 	printf("GPU count : %d\n", count);
-	int device = 2;
+	int device = count-1;
 	cudaSetDevice(device);
 	cudaDeviceProp prop;
 	cudaGetDeviceProperties(&prop, device);
