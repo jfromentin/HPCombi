@@ -94,7 +94,7 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 				blockPerm.x = min(threadPerPerm, 1024);
 				blockPerm.y = max(1024/threadPerPerm, 1);
 				gridPerm.x = (threadPerPerm + blockPerm.x -1)/blockPerm.x;
-				gridPerm.y = (paquet*nb_gen + blockPerm.y-1)/blockPerm.y;
+				gridPerm.y = (paquet + blockPerm.y-1)/blockPerm.y;
 				if(threadPerPerm < size && gridPerm.y < 65536 && gridPerm.x < pow(2,31))
 					break;
 				threadPerPerm /= 2;

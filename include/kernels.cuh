@@ -88,27 +88,28 @@ __global__ void compose_kernel(T* __restrict__ workSpace, const T* __restrict__ 
                               const int size, const int nb_words, const int size_word, const int8_t nb_gen){
   const int tidy = blockIdx.y*blockDim.y + threadIdx.y;
   const int tidx = blockIdx.x*blockDim.x + threadIdx.x;
-  const int wordId = tidy/nb_gen;
   const int nb_threads = blockDim.x*gridDim.x;
   const int coefPerThread = (size + nb_threads-1) / nb_threads;
-  const size_t offset = static_cast<size_t>(tidy) * size;
-  int indexInit, index;
+  const size_t offset = static_cast<size_t>(tidy) * size * nb_gen;
+  int indexInit, index, indexLast;
   int8_t offset_d_gen;
   
-  if(wordId < nb_words){
+  if(tidy < nb_words){
     for(int coef=0; coef<coefPerThread; coef++){
       indexInit = tidx + nb_threads*coef;
       index = indexInit;
       if (indexInit < size){
         // Compute all perm in word  
         for(int j=0; j<size_word; j++){
-          offset_d_gen = d_words[j + wordId * size_word];
+          offset_d_gen = d_words[j + tidy * size_word];
           if(offset_d_gen > -1)
             index = d_gen[index + offset_d_gen*size];
         }
         // Compute last perm
-        index = d_gen[index + (tidy%nb_gen)*size];
-        workSpace[static_cast<size_t>(indexInit) + offset] = index;
+        for(int gen=0; gen<nb_gen; gen++){
+	        indexLast = d_gen[index + gen*size];
+	        workSpace[static_cast<size_t>(indexInit) + offset + gen*size] = indexLast;
+		}
       }
     }
   }
