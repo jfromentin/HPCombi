@@ -57,7 +57,6 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 	//~ cudaEvent_t start, stop;
 	//~ cudaEventCreate(&start);
 	//~ cudaEventCreate(&stop);
-  auto tstartCpu = high_resolution_clock::now();
 	memory /= 1.05;
 	int nb_words = words.size()/size_word;
 	
@@ -81,6 +80,7 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 	if(div>1)
 		std::cout << div << " passage(s)" << std::endl;
 	for(int pass=0; pass<div; pass++){
+  auto tstart = high_resolution_clock::now();
 		if(pass == div-1)
 			paquet = nb_words-paquetMax*pass;
 		if(paquet > 0){
@@ -102,6 +102,10 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 				compose_kernel<T><<<gridPerm, blockPerm>>>(workSpace.device(), d_gen, words.device() + pass*paquetMax*size_word, size, paquet, size_word, nb_gen);
 			gpuErrchk( cudaDeviceSynchronize() );
 			gpuErrchk( cudaPeekAtLastError() );
+  auto tfin = high_resolution_clock::now();
+  auto tm = duration_cast<duration<double>>(tfin - tstart);
+  timeC += tm.count();
+  auto tstart = high_resolution_clock::now();
 
 			// blockHash.y must be 1, if not reduction through tidy thread is required in kernel.
 			dim3 blockHash(64, 1), gridHash(1, 1);
@@ -116,20 +120,26 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 					blockHash.x *= 2;
 			}
 				hash_kernel<T><<<gridHash, blockHash>>>(workSpace.device(), hashed.device() + pass*paquetMax*nb_gen * NB_HASH_FUNC, size, paquet*nb_gen);
-				
+			gpuErrchk( cudaDeviceSynchronize() );
+			gpuErrchk( cudaPeekAtLastError() );
+
+  tfin = high_resolution_clock::now();
+  tm = duration_cast<duration<double>>(tfin - tstart);
+  timeH += tm.count();
+  tstart = high_resolution_clock::now();			
 
 				//~ dim3 blockPre(64, 1), gridPre((paquet*nb_gen + blockPre.x-1)/blockPre.x, 1);
 				pre_insert_kernel<T><<<gridHash, blockHash>>>(workSpace.device(), hashed.device() + pass*paquetMax*nb_gen * NB_HASH_FUNC, size, paquet*nb_gen);
 			
 			gpuErrchk( cudaDeviceSynchronize() );
 			gpuErrchk( cudaPeekAtLastError() );
-			
+
+  tfin = high_resolution_clock::now();
+  tm = duration_cast<duration<double>>(tfin - tstart);
+  timeP += tm.count();			
 			hashed.copyDeviceToHost(pass*paquetMax*nb_gen * NB_HASH_FUNC, paquet*nb_gen * NB_HASH_FUNC);
 		}
 	}
-  auto tfinCpu = high_resolution_clock::now();
-  auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
-  timeCH += tmCpu.count();
 	//~ cudaEventRecord(stop);
 	//~ cudaEventSynchronize(stop);
 	//~ cudaEventElapsedTime(&time, start, stop);

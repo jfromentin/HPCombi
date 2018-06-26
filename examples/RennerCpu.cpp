@@ -30,7 +30,9 @@ using namespace chrono;
 using namespace HPCombi;
 
 double timeEq=0;
-double timeCH=0;
+double timeC=0;
+double timeH=0;
+double timeP=0;
 
 void printWord(const array<int8_t, NODE>& word){
   for(int i=0; i<NODE; i++){
@@ -43,37 +45,19 @@ void printWord(const array<int8_t, NODE>& word){
 
 template <typename T, size_t size>
 uint128_t hash_cpu(const VectGeneric<size, T>& trans){
+	auto tstart = high_resolution_clock::now();
   uint64_t prime = 0x9e3779b97f4a7bb9;
   uint128_t result = trans[0]*prime;
   for(int i=1; i<size; i++){
     result += trans[i];
     result *= prime;
   }
+  auto tfin = high_resolution_clock::now();
+  auto tm = duration_cast<duration<double>>(tfin - tstart);
+  timeH += tm.count();
   return result;
 }
 
-//~ template <typename T, size_t size>
-//~ bool equal_cpu(const Key& key1, const Key& key2, const vector< VectGeneric<size, T> >& gens){
-  //~ auto tstartCpu = high_resolution_clock::now();
-  
-  //~ VectGeneric<size, T> tmp1(0, size);
-  //~ VectGeneric<size, T> tmp2(0, size);
-  //~ for(int j=0; j<NODE; j++){
-    //~ if(key1[j]==-1)
-      //~ break;
-    //~ tmp1 = gens[ key1[j] ].permuted(tmp1);
-  //~ }
-  //~ for(int j=0; j<NODE; j++){
-    //~ if(key2[j]==-1)
-      //~ break;
-    //~ tmp2 = gens[ key2[j] ].permuted(tmp2);
-  //~ }
-  
-  //~ auto tfinCpu = high_resolution_clock::now();
-  //~ auto tmCpu = duration_cast<duration<double>>(tfinCpu - tstartCpu);
-  //~ timeEq += tmCpu.count();
-  //~ return tmp1 == tmp2;
-//~ }
 
 template <typename T, size_t size>
 bool equal_cpu(const Key& key1, const Key& key2, const vector< VectGeneric<size, T> >& gens){
@@ -247,6 +231,8 @@ void renner(int8_t nb_gen, uint64_t* gen){
   for(int i=0; i<NODE; i++){
     newtodo.clear();
     for(int i=0; i<todo.size(); i++){
+		
+	auto tstart = high_resolution_clock::now();
       VectGeneric<size, T> tmp(0, size);
       auto word = todo[i];
       int j=0;
@@ -255,6 +241,9 @@ void renner(int8_t nb_gen, uint64_t* gen){
           break;
         tmp = gens[ word[j] ].permuted(tmp);
       }
+  auto tfin = high_resolution_clock::now();
+  auto tm = duration_cast<duration<double>>(tfin - tstart);
+  timeC += tm.count();
       
       for(int k=0; k<gens.size(); k++){
         auto newWord = word;
@@ -276,24 +265,33 @@ void renner(int8_t nb_gen, uint64_t* gen){
     auto tfinGpu = high_resolution_clock::now();
     auto tmGpu = duration_cast<duration<double>>(tfinGpu - tstartGpu);
     timeTotal = tmGpu.count();
-    cout << i << ", todo = " << todo.size() << ", elems = " << elems.size()
+    cout << i << ", todo = " << newtodo.size()/NODE << ", elems = " << elems.size()
          << ", #Bucks = " << elems.bucket_count() << ", table size = " 
-         << elems.bucket_count()*sizeof(Key)*1e-6 
-         << " Mo" << endl
+         << elems.bucket_count()*sizeof(Key)*1e-6
+         << endl
          << "     Timings : Total = " 
-         << (int)timeTotal/3600 << ":" << (int)timeTotal%3600/60 << ":" << ((int)timeTotal%3600)%60
+         //~ << (int)timeTotal/3600 << ":" << (int)timeTotal%3600/60 << ":" << ((int)timeTotal%3600)%60
+         << std::setprecision(3) << timeTotal
          << endl << "      insert = " 
-         << (int)timeIns/3600 << ":" << (int)timeIns%3600/60 << ":" << ((int)timeIns%3600)%60
-         << ", " << setprecision(3) << timeIns/timeTotal*100
+         //~ << (int)timeIns/3600 << ":" << (int)timeIns%3600/60 << ":" << ((int)timeIns%3600)%60
+         << timeIns-timeEq
+         << ", " << timeIns/timeTotal*100
          << "%      equal = " 
-         << (int)timeEq/3600 << ":" << (int)timeEq%3600/60 << ":" << ((int)timeEq%3600)%60
-         << ", " << setprecision(3) << timeEq/timeTotal*100
-         //~ << "%" << endl << "      constr = " 
-         //~ << (int)timeCon/3600 << ":" << (int)timeCon%3600/60 << ":" << ((int)timeCon%3600)%60
-         //~ << ", " << setprecision(3) << timeCon/timeTotal*100
-         //~ << "%      compHash = " 
-         //~ << (int)timeCH/3600 << ":" << (int)timeCH%3600/60 << ":" << ((int)timeCH%3600)%60
-         //~ << ", " << setprecision(3) << timeCH/timeTotal*100
+         //~ << (int)timeEq/3600 << ":" << (int)timeEq%3600/60 << ":" << ((int)timeEq%3600)%60
+         << timeEq
+         << ", " << timeEq/timeTotal*100
+         << "%      comp = " 
+         //~ << (int)timeC/3600 << ":" << (int)timeC%3600/60 << ":" << ((int)timeC%3600)%60
+         << timeC
+         << ", " << timeC/timeTotal*100
+         << "%      hash = " 
+         //~ << (int)timeH/3600 << ":" << (int)timeH%3600/60 << ":" << ((int)timeH%3600)%60
+         << timeH
+         << ", " << timeH/timeTotal*100
+         << "%      pre-insert = " 
+         //~ << (int)timeP/3600 << ":" << (int)timeP%3600/60 << ":" << ((int)timeP%3600)%60
+         << timeP
+         << ", " << timeP/timeTotal*100
          << "%" << endl;
     if(todo.size() == 0)
       break;

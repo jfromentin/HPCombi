@@ -28,7 +28,9 @@ using namespace std;
 using namespace std::chrono;
 
 double timeEq=0;
-double timeCH=0;
+double timeC=0;
+double timeH=0;
+double timeP=0;
 
 template <typename T>
 class eqTransGPU
@@ -193,13 +195,28 @@ void renner(int size, int8_t nb_gen, uint64_t* gen){
          << ", " << std::setprecision(2) << (double)nb_double/(todo.size()/NODE*nb_gen)*100 << " %"
          << endl
          << "     Timings : Total = " 
-         << (int)timeTotal/3600 << ":" << (int)timeTotal%3600/60 << ":" << ((int)timeTotal%3600)%60
+         //~ << (int)timeTotal/3600 << ":" << (int)timeTotal%3600/60 << ":" << ((int)timeTotal%3600)%60
+         << std::setprecision(3) << timeTotal
          << endl << "      insert = " 
-         << (int)timeIns/3600 << ":" << (int)timeIns%3600/60 << ":" << ((int)timeIns%3600)%60
-         << ", " << std::setprecision(3) << timeIns/timeTotal*100
+         //~ << (int)timeIns/3600 << ":" << (int)timeIns%3600/60 << ":" << ((int)timeIns%3600)%60
+         << timeIns-timeEq
+         << ", " << timeIns/timeTotal*100
          << "%      equal = " 
-         << (int)timeEq/3600 << ":" << (int)timeEq%3600/60 << ":" << ((int)timeEq%3600)%60
-         << ", " << std::setprecision(3) << timeEq/timeTotal*100
+         //~ << (int)timeEq/3600 << ":" << (int)timeEq%3600/60 << ":" << ((int)timeEq%3600)%60
+         << timeEq
+         << ", " << timeEq/timeTotal*100
+         << "%      comp = " 
+         //~ << (int)timeC/3600 << ":" << (int)timeC%3600/60 << ":" << ((int)timeC%3600)%60
+         << timeC
+         << ", " << timeC/timeTotal*100
+         << "%      hash = " 
+         //~ << (int)timeH/3600 << ":" << (int)timeH%3600/60 << ":" << ((int)timeH%3600)%60
+         << timeH
+         << ", " << timeH/timeTotal*100
+         << "%      pre-insert = " 
+         //~ << (int)timeP/3600 << ":" << (int)timeP%3600/60 << ":" << ((int)timeP%3600)%60
+         << timeP
+         << ", " << timeP/timeTotal*100
          << "%" << endl;
     if(newtodo.size()/NODE == 0)
       break;

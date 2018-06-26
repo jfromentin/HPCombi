@@ -223,28 +223,23 @@ __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const
 
   const int tidx = blockIdx.x * blockDim.x + threadIdx.x;
   const int coefPerThread = (size+blockDim.y-1) / blockDim.y;
-  //~ uint64_t primes[NB_HASH_FUNC] = {13, 17, 19, 23};
   uint64_t primes[NB_HASH_FUNC] = {0x9e3779b97f4a7bb9, 19};
   uint64_t out[NB_HASH_FUNC];
   
   // Compute the lower power of prime that thread is using.
-  //~ for(int k=0; k<NB_HASH_FUNC; k++){
     out[0] = 1;
     out[1] = 5381;
     for (int j=0; j<coefPerThread*threadIdx.y; j++)
       out[0] *= primes[0];
-  //~ }
   
   uint64_t coef=0;
   // Initiale compute stage
   if(threadIdx.y + blockDim.y * 0 < size && tidx < nb_trans){
     coef = workSpace[static_cast<size_t>(tidx)*size + threadIdx.y + blockDim.y*0];
-    //~ for(int k=0; k<NB_HASH_FUNC; k++)
       out[0] *= coef;
       out[1] = ((out[1] << 5) + out[1]) + coef;
   }
   else{
-    //~ for(int k=0; k<NB_HASH_FUNC; k++)
       out[0] = 0;  
       out[1] = 5384;
   } 
@@ -254,17 +249,14 @@ __global__ void hash_kernel(T* __restrict__ workSpace, uint64_t* d_hashed, const
     if(threadIdx.y + blockDim.y * i < size && tidx < nb_trans)
       coef = workSpace[static_cast<size_t>(tidx)*size + threadIdx.y + blockDim.y*i];
 
-    //~ for(int k=0; k<NB_HASH_FUNC; k++){
       out[0] += coef;
       out[0] *= primes[0];
       out[1] = ((out[1] << 5) + out[1]) + coef;
-    //~ }
 
     coef = 0;
   }
 
   if(threadIdx.y == 0)
-    //~ for(int k=0; k<NB_HASH_FUNC; k++)
       d_hashed[NB_HASH_FUNC*tidx + 0] = out[0] >> 32;
       d_hashed[NB_HASH_FUNC*tidx + 1] = out[1];
 }

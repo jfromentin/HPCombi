@@ -12,7 +12,9 @@
 #define NB_HASH_FUNC 2
 typedef unsigned __int128 uint128_t;
 extern double timeEq;
-extern double timeCH;
+extern double timeH;
+extern double timeC;
+extern double timeP;
 
 class Key
 {
