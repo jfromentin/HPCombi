@@ -40,7 +40,7 @@ g_1 &=& 2|4|1|3\\
 g_2 &=& 1|3|4|2\\
 g_2\circ g_1 &=& 3|2|1|4
 \end{eqnarray*}
-Let $T_k$ be the set of transformations to test and $F_k$ the set of already found transformations at the stage number $k$. Initialy $T_1 = F_1 = \{Id\}$, where $Id = 1|2|3|...|n.$\\
+Let $T_k$ be the set of transformations to test and $F_k$ the set of already found transformations at the stage number $k$. Initialy $T_0 = F_0 = \{Id\}$, where $Id = 1|2|3|...|n.$\\
 At stage number $k$, all element of $T_k$ are composed with all generators in $G$. The resulting transformations are then compared with transformations in $F_k$ and added, if absent, in $F_k$.\\ 
 A word is defined as a suit of generators to compose with the identity transformation, Id.
 The first words from which we obtain a particular transformation is stored in a hash table.
@@ -86,8 +86,9 @@ Stage (k) & Number of transformation to test: card($T_k$) & Number of transforma
 %GPUs could be used to do those operation for n > 256.
 
 \section{Composition algorithm}
+\label{part:compose}
 Let's assume one thread should compose all generators contained in a word to the identity transformation, Id. Two loops are necessary, one to iterate over the generators in the word, the second to iterate over the transformations elements.
-\autoref{algo:composebad} shows the algorithm for which the outer loop iterates over the generators and the inner loop iterates over the elements.
+\autoref{algo:composebad} shows the algorithm for which the outer loop iterates over the generators and the inner loop iterates over the elements:
 \begin{itemize}
 \item A temporary array resultTMP must be allocated to store intermediate results.
 \item Multiple loop over the elements are needed to :
@@ -100,7 +101,7 @@ Let's assume one thread should compose all generators contained in a word to the
  \item Accesses to the generators component are contiguous,
  \item Parallelization of the outer loop require synchronization of all treads.
 \end{itemize}
-\autoref{algo:composegood} shows the algorithm for which the outer loop iterates over the elements and the inner loop iterates over the generators.
+\autoref{algo:composegood} shows the algorithm for which the outer loop iterates over the elements and the inner loop iterates over the generators:
 \begin{itemize}
  \item No temporary array is needed, memory consumption is halved compared to \autoref{algo:composebad},
  \item Only one loop over the elements is needed,
@@ -108,7 +109,7 @@ Let's assume one thread should compose all generators contained in a word to the
  \item Accesses to the generators component are not contiguous,
  \item The outer loop can easily be parallelized without need for explicit synchronization.
 \end{itemize}
-\gls{gpu} threads can be synchronized in a \gls{cbloc} whereas threads in different \glspl{cbloc} can't be synchronized. Indeed, there is no guarantee \glspl{cbloc} are executed in parallel, as a consequence, synchronization between \glspl{cbloc} could lead to dead blocks. Hence a parallel implementation of \autoref{algo:composebad} would require transformations elements to be spread over a maximum of 1024 threads, the maximum number of threads in a \gls{cbloc}.
+\gls{gpu} threads can be synchronized in a \gls{cbloc} whereas threads in different \glspl{cbloc} can't be synchronized \cite{doccuda}. Indeed, there is no guarantee \glspl{cbloc} are executed in parallel, as a consequence, synchronization between \glspl{cbloc} could lead to dead blocks. Hence a parallel implementation of \autoref{algo:composebad} would require transformations elements to be spread over a maximum of 1024 threads, the maximum number of threads in a \gls{cbloc}.
 
 The later limitation on parallelism, the doubling of memory consumption and the need for three loops over the elements in \autoref{algo:composebad} made us choose the \autoref{algo:composegood} for the starting point of the parallel implementation.
 \autoref{algo:composepar} is a parallelized version for \gls{gpu} of \autoref{algo:composegood}. The outer loop is basically replaced by a "if" statement selecting threads that should compute the instructions. Each threads applies all compositions to one element. To adapt granularity, one can mix \autoref{algo:composegood} and \autoref{algo:composepar} to assign several elements to each threads on which to compose all generators in a word.
@@ -181,6 +182,7 @@ Parallelism is dynamically tuned during the execution according to the number of
 
 
 \section{Hash algorithm}
+\label{part:hash}
 Let $t$ be a transformation and $P_{t}$ be the polynomial $\displaystyle\sum_{i=1}^{size} t(i)X^i$. The hash function is defined as $hash(t) = P_{t}(prime)$, where $prime$ is a prime number.
 The polynomial value is computed with the Ruffini-Horner method.
 \begin{algorithm}
@@ -207,9 +209,9 @@ To compare two keys, first the hash values are compared. If they are different, 
 If the hash value are identical the transformations have to be compared coefficient by coefficient. The words allow to compute both transformations and compare them coefficient by coefficient as shown in \autoref{algo:equal}.
 In the \gls{gpu} version each thread computes a coefficient for both transformation according to \autoref{algo:composepar}. Then each thread compares the resulting coefficients and store the result in the $equal$ variable. The sum of each thread's $equal$ variable is then computed and compared to the size of the transformations.
 
-The execution time of the equality test on \gls{gpu} is dominated by \gls{cpu}/\gls{gpu} data copy, kernel launching latency and \gls{cpu}/\gls{gpu} synchronization. This is demonstrated in \autoref{benchgpu}, which is a profiling the the execution of the Bihecke 5 and Renner A 7 tests cases. Details about test cases are in \autoref{part:results}.
+The execution time of the equality test on \gls{gpu} is dominated by \gls{cpu}/\gls{gpu} data copy, kernel launching latency and \gls{cpu}/\gls{gpu} synchronization. This is demonstrated in \autoref{benchgpu}, which is a profiling the the execution of the Bihecke 5 and Renner A 7 test cases. Details about test cases are in \autoref{part:results}.
 Testing equality on \gls{cpu} avoids the overhead of copying data to the \gls{gpu}, kernel launching latency and \gls{cpu}/\gls{gpu} synchronization.
-\autoref{equalcpugpu} compares the time to test for equality in different test cases on the \gls{cpu} on one hand and on the \gls{gpu} on the other hand. When transformation sizes are small (24, 120) it is faster on \gls{cpu}, when transformation sizes are big (13327, 130922) it is faster on \gls{gpu}. The size where \glspl{gpu} are faster than \glspl{cpu} seems to be around 1000.
+\autoref{equalcpugpu} compares the time to test for equality in different test cases on the \gls{cpu} on one hand and on the \gls{gpu} on the other hand. When transformation sizes are small (120, 720) it is faster on \gls{cpu}, when transformation sizes are big (13327, 130922) it is faster on \gls{gpu}. The size where \glspl{gpu} are faster than \glspl{cpu} seems to be around 1000.
 
 All runs in this section are executed on \gls{e51650} as the \gls{cpu} and \gls{1080} as the \gls{gpu}.
 
@@ -221,7 +223,7 @@ All runs in this section are executed on \gls{e51650} as the \gls{cpu} and \gls{
 Bihecke 5 & 1.03 & 2.80 & 0.96 & 1.29 \\
 Renner A 7 & 36.21 & 10.51 & 3.86 & 81.79 \\
 \end{tabular}
-\caption{}
+\caption{Profiling of the execution of the equality testing kernel on \glstext{gpu} for the Bihecke 5 and Renner A 7 test cases.}
 \label{benchgpu}
 \end{table} 
 
@@ -236,7 +238,7 @@ Bihecke 6 (partial) & 720 & 38.3 &$<$& 219 \\
 Renner A 6 & 13327 & 7.85 &$>$& 1.11 \\
 Renner A 7 & 130922 & 1320 &$>$& 45.6 \\
 \end{tabular}
-\caption{}
+\caption{Comparison of the execution time of the equality testing kernel on \glstext{gpu} and \glstext{cpu} for the Bihecke 5, Bihecke 6, Renner A 6 and Renner A 7 test cases.}
 \label{equalcpugpu}
 \end{table} 
  
@@ -262,14 +264,15 @@ Renner A 7 & 130922 & 1320 &$>$& 45.6 \\
 \end{algorithm}
 
 \section{Duplicates elimination on GPU}
+\label{part:preinsert}
 At each stage, new computed transformations are inserted in the hash table located on the \gls{cpu}. This require to test if the hash table location attributed to the transformation is empty, introducing a memory fetch. Those memory fetch are random as a consequence of the hash function efficiency. When the hash table becomes big enough, it doesn't fit entirely in the \gls{cpu} cache and lots of cache misses occurs.
-To limit the number of cache misses we should limit the number of insertion attempts in the hash table. For that purpose a kernel is executed on the \gls{gpu} to eliminate duplicates within the set of transformations computed at a particular stage. This kernel is described is \autoref{algo:preinsert}. As a result the set of transformations that the \gls{cpu} attempt to insert in the hash table is smaller. The number of transformations send bask to the \gls{cpu} is about 3 times smaller, this is shown in \autoref{preinsert}. Details about test cases are in \autoref{part:results}.
+To limit the number of cache misses we should limit the number of insertion attempts in the hash table. For that purpose a kernel is executed on the \gls{gpu} to eliminate duplicates within the set of transformations computed at a particular stage. This kernel is described is \autoref{algo:preinsert}. As a result the set of transformations the \gls{cpu} attempts to insert in the hash table is smaller. \autoref{preinsert} shows that the number of transformations the \gls{cpu} attemps to insert is about 3 times smaller in typical test cases. Details about test cases are in \autoref{part:results}.
 
-In our implementation, hash value are computed before the elimination of duplicates, which allows to first compare hash value before comparing the transformations coefficient by coefficient. The down side of this ordering is that some hash value computation could be avoided. Indeed if the duplicates are eliminated before computing the hash value, 3 times less hash value would be computed. Benchmarks in \autoref{part:results} show that the hash values computation is cheap compared to the elimination of duplicates, hence computing the hash value first to accelerate duplicates elimination is the better choice.
+In our implementation, hash value are computed before the elimination of duplicates. This allows the duplicates elimination algorithm to first compare hash value before comparing the transformations coefficient by coefficient. The down side of this functions ordering is that some hash value computation could be avoided. Indeed if the duplicates elimination algorithm is run before computing the hash value, 3 times less hash value would be computed. Benchmarks in \autoref{part:results} show that the hash values computation is cheap compared to the elimination of duplicates, hence computing the hash value first to accelerate duplicates elimination is the better choice.
 
-As for the composition algorithm, a \gls{gpu} version of \autoref{algo:preinsert} is obtained by replacing by the outer loop with a "if" statement selecting threads that should compute the instructions.
+As for the composition algorithm, a \gls{gpu} version of \autoref{algo:preinsert} is obtained by replacing the outer loop with a "if" statement selecting threads that should compute the instructions.
 
-The inner loop iterating over the elements of a transformation could be stopped the first time an non equality occurs. This appended to be much slower for the examples tested in \autoref{part:results}. Two hypothesis, to be confirmed, could explain why :
+Note that the inner loop iterating over the elements of a transformation in \autoref{algo:preinsert}, could be stopped the first time an non equality occurs. This appended to be much slower for the test cases described in \autoref{part:results}. Two hypothesis, yet to be confirmed, could explain why :
 \begin{itemize}
 \item The additional loop control instructions resulting from the \emph{break} instruction are not efficiently handled by the \gls{gpu}.
 \item The \emph{break} instruction results in more warp divergence, which implies serialization of execution \cite{doccuda}.
@@ -286,7 +289,7 @@ Bihecke 6 (partial) & 720 & 69\% \\
 Renner A 6 & 13327 & 64\% \\
 Renner A 7 & 130922 & 66\% \\
 \end{tabular}
-\caption{}
+\caption{Efficiency of the duplicates elimination kernel for the Bihecke 5, Bihecke 6, Renner A 6 and Renner A 7 test cases.}
 \label{preinsert}
 \end{table} 
 
@@ -315,71 +318,94 @@ Renner A 7 & 130922 & 66\% \\
 
 \section{Results}
 \label{part:results}
-
-For the following benchmarks equality testing is always done on the \gls{gpu}.
-Three sets of generators are tested :
+In this section we aim at profiling the whole algorithm of enumerating all transformation generated by a set of generators. The algorithm parts described in \autoref{part:compose}, \autoref{part:hash}, \autoref{part:equality} and \autoref{part:preinsert} are profiled as well as the insertion time in the hash table.
+Three implementations are compared:
+\begin{enumerate}
+\item The whole algorithm is executed on the \gls{cpu} with non optimized code. This is our reference implementation which we name "\glstext{cpu}". 
+\item The whole algorithm is executed on the \gls{gpu} except the hash table part, which is on the \gls{cpu}. No duplicate elimination is executed on the \gls{gpu}.
+We name this implementation "\glstext{gpu}".
+\item The whole algorithm is executed on the \gls{gpu} except the hash table part, which is on the \gls{cpu}. Duplicate elimination is executed on the \gls{gpu}.
+We name this implementation "\glstext{gpu} (bis)".
+\end{enumerate}
+The four test cases are the following:
 \begin{itemize}
-\item Bihecke 5: 8 generators of size 120,
-\item Bihecke 6: 10 generators of size 720,
-\item Renner A6: 6 generators of size 13327,
-\item Renner A7: 7 generators of size 130922.
+\item Bihecke 5: 8 generators of size 120 generating a set of 31103 transformations,
+\item Bihecke 6: 10 generators of size 720 generating a set of 7505009 transformations,
+\item Renner A6: 6 generators of size 13327 generating a set of 13327 transformations,
+\item Renner A7: 7 generators of size 130922 generating a set of 130922 transformations.
 \end{itemize}
-%The size of the transformations has a notable influence on performances. The high thread count of \glspl{gpu} allow to efficiently compute big transformations.
+
+
 All runs in this section are executed on \gls{e51650} as the \gls{cpu} and \gls{1080} as the \gls{gpu}.
-The test case Bihecke 6 required running several weeks to complete, for the benchmark in this study runs where done on only a few hours.
-All results about Bihecke 6 are partial results obtained at stage 12.
+The test case Bihecke 6 require running several weeks to complete, for this study runs where done on only a few hours.
+As a consequence results about Bihecke 6 are partial: it is the results obtained at stage 12.
+For simplicity equality testing is always done on the \gls{gpu}, regardless of the discussion held in \autoref{part:equality}.
+
+
+%The size of the transformations has a notable influence on performances. The high thread count of \glspl{gpu} allow to efficiently compute big transformations.
+
+\Cref{bench:bihecke5,bench:bihecke6,bench:rena6,bench:rena7} show that a noticeable speed up is obtained from the \gls{gpu} for the Composition and Hash routines. Conclusion are to be lessened, first because the \gls{cpu} routines are not optimized, second because the overall time proportion of those two routines are low.\\
+As discussed in \autoref{part:equality}, the equality testings are longer on the \gls{gpu} when transformations are rather small (\Cref{bench:bihecke5,bench:bihecke6}), faster on the \gls{gpu} when transformations are rather big (\Cref{bench:rena6,bench:rena7}).\\
+For the Bihecke 5 and Bihecke 6 (\Cref{bench:bihecke5,bench:bihecke6}) test cases the overhead of the duplicates elimination routine is negligible compared to the total execution time ($<1\%$).\\
+For the Renner A 6 and Renner A 7 (\Cref{bench:rena6,bench:rena7}) test cases the overhead of the duplicates elimination routine is low ($<10\%$).
+In all test case the duplicates elimination routine allow a speed up $>3$ for the hash table insertion time. This is because about $2/3$ of the transformations computed at each stages are eliminated as duplicates. Details are in \autoref{part:preinsert}. 
+\autoref{bench:rena7} show a speed up of 5 when using the duplicates elimination routine because of an unexpectedly high insertion time for the \gls{cpu} implementation. This remain unexplained as for now.
+
+As the insertion time is dominant in the total execution time (due to cache misses, see \autoref{part:preinsert}), the duplicates elimination on \gls{gpu} is quit valuable. The total speed up is actually equal or very close to the insertion time speed up. Note that similar speed up could not have been obtained on the \gls{cpu} with this hash table implementation (Google Sparsehash). Indeed this hash table implementation only allows sequential insertion.
+
+
 
 \begin{table}
 \centering
-\begin{tabular}{ p{3cm} |>{\centering\arraybackslash}p{1.3cm} |> {\centering\arraybackslash}p{2cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} }
- & Total time (s) & Composition (s) & Hash (s) & Equality (s) & Sort (s) & Insert (s) \\
+\begin{tabular}{ p{2.5cm} |>{\centering\arraybackslash}p{1.3cm} |> {\centering\arraybackslash}p{2cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.8cm} > {\centering\arraybackslash}p{1.3cm} }
+ & Total time (s) & Composition (s) & Hash (s) & Equality (s) & Duplicates elimination (s) & Insert (s) \\
 \hline
 \glstext{cpu} & 66.9 & 0.02 & 0.03 & 0.55 & 0.00 & 66.2 \\
 
 \glstext{gpu} & 72.6 & 0.002 & 0.002 & 9.3 & 0.00 & 63.3 \\
 
-\glstext{gpu} (sort) & 27.2 & 0.002 & 0.002 & 3.37 & 0.06 & 23.8 \\
+\glstext{gpu} (bis) & 27.2 & 0.002 & 0.002 & 3.37 & 0.06 & 23.8 \\
 \hline
-Speed up \newline \glstext{cpu}/\glstext{gpu} (sort) & 3 & 10 & 15 & 1/6 & 0 & 3 \\
+Speed up \newline \glstext{cpu}/\glstext{gpu} (bis) & 3 & 10 & 15 & 1/6 & 0 & 3 \\
 \end{tabular}
-\caption{Bihecke 5}
-\label{bench:bihebke5}
+\caption{Profiling of the execution of the test case Bihecke 5 for three implementations.}
+\label{bench:bihecke5}
 \end{table}
 
 
 \begin{table}
 \centering
-\begin{tabular}{ p{3cm} |>{\centering\arraybackslash}p{1.3cm} |> {\centering\arraybackslash}p{2cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} }
- & Total time ($10^4$ s) & Composition (s) & Hash (s) & Equality (s) & Sort (s) & Insert ($10^4$ s) \\
+\begin{tabular}{ p{2.5cm} |>{\centering\arraybackslash}p{1.3cm} |> {\centering\arraybackslash}p{2cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.8cm} > {\centering\arraybackslash}p{1.3cm} }
+ & Total time ($10^4$ s) & Composition (s) & Hash (s) & Equality (s) & Duplicates elimination (s) & Insert ($10^4$ s) \\
 \hline
 \glstext{cpu} & 12.3 & 5.75 & 15.6 & 151 & 0.00 & 12.3 \\
 
 \glstext{gpu} & 12.3 & 0.258 & 0.858 & 712 & 0.00 & 12.3 \\
 
-\glstext{gpu} (sort) & 4.08 & 0.259 & 0.842 & 220 & 155 & 4.04 \\
+\glstext{gpu} (bis) & 4.08 & 0.259 & 0.842 & 220 & 155 & 4.04 \\
 \hline
-Speed up \newline \glstext{cpu}/\glstext{gpu} (sort) & 3 & 22 & 15 & 2/3 & 0 & 3 \\
+Speed up \newline \glstext{cpu}/\glstext{gpu} (bis) & 3 & 22 & 15 & 2/3 & 0 & 3 \\
 \end{tabular}
-\caption{Bihecke 6 (partial)}
-\label{bench:bihebke6}
+\caption{Profiling of the execution of the test case Bihecke 6 (partial) for three implementations.}
+\label{bench:bihecke6}
 \end{table}
 
 
 
 \begin{table}
 \centering
-\begin{tabular}{ p{3cm} |>{\centering\arraybackslash}p{1.3cm} |> {\centering\arraybackslash}p{2cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} }
- & Total time (s) & Composition (s) & Hash (s) & Equality (s) & Sort (s) & Insert (s) \\
+\begin{tabular}{ p{2.5cm} |>{\centering\arraybackslash}p{1.3cm} |> {\centering\arraybackslash}p{2cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.8cm} > {\centering\arraybackslash}p{1.3cm} }
+ & Total time (s) & Composition (s) & Hash (s) & Equality (s) & Duplicates elimination (s) & Insert (s) \\
 \hline
 \glstext{cpu} & 46.3 & 1.22 & 2.12 & 32.6 & 0.00 & 9.88 \\
 
 \glstext{gpu} & 12.6 & 0.068 & 0.066 & 3.24 & 0.00 & 9.16 \\
 
-\glstext{gpu} (sort) & 4.64 & 0.062 & 0.065 & 1.09 & 0.381 & 3.03 \\
+\glstext{gpu} (bis) & 4.64 & 0.062 & 0.065 & 1.09 & 0.381 & 3.03 \\
 \hline
-Speed up \newline \glstext{cpu}/\glstext{gpu} (sort) & 10 & 20 & 33 & 30 & 0 & 3 \\
+Speed up \newline \glstext{cpu}/\glstext{gpu} (bis) & 10 & 20 & 33 & 30 & 0 & 3 \\
 \end{tabular}
-\caption{Renner A6}
+\caption{Profiling of the execution of the test case Renner A6 for three implementations.}
 \label{bench:rena6}
 \end{table}
 
@@ -388,18 +414,18 @@ Speed up \newline \glstext{cpu}/\glstext{gpu} (sort) & 10 & 20 & 33 & 30 & 0 & 3
 
 \begin{table}
 \centering
-\begin{tabular}{ p{3cm} |>{\centering\arraybackslash}p{1.3cm} |> {\centering\arraybackslash}p{2cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} }
- & Total time (s) & Composition (s) & Hash (s) & Equality (s) & Sort (s) & Insert (s) \\
+\begin{tabular}{ p{2.5cm} |>{\centering\arraybackslash}p{1.3cm} |> {\centering\arraybackslash}p{2cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.3cm} > {\centering\arraybackslash}p{1.8cm} > {\centering\arraybackslash}p{1.3cm} }
+ & Total time (s) & Composition (s) & Hash (s) & Equality (s) & Duplicates elimination (s) & Insert (s) \\
 \hline
 \glstext{cpu} & 8440 & 260 & 238 & 5870 & 0.00 & 1990 \\
 
 \glstext{gpu} & 1390 & 10.2 & 12.7 & 155 & 0.00 & 1170 \\
 
-\glstext{gpu} (sort) & 524 & 10.2 & 12.7 & 45.9 & 22.1 & 391 \\
+\glstext{gpu} (bis) & 524 & 10.2 & 12.7 & 45.9 & 22.1 & 391 \\
 \hline
-Speed up \newline \glstext{cpu}/\glstext{gpu} (sort) & 16 & 25 & 19 & 128 & 0 & 5 \\
+Speed up \newline \glstext{cpu}/\glstext{gpu} (bis) & 16 & 25 & 19 & 128 & 0 & 5 \\
 \end{tabular}
-\caption{Renner A7}
+\caption{Profiling of the execution of the test case Renner A7 for three implementations.}
 \label{bench:rena7}
 \end{table}
 
