@@ -196,6 +196,7 @@ __global__ void pre_insert_kernel(T* __restrict__ workSpace, uint64_t* d_hashed,
       hashComp2 = d_hashed[i*NB_HASH_FUNC + 1];
       // Compare the hash values first
       if(hashRef1 == hashComp1 && hashRef2 == hashComp2){
+      //~ if(1){
         equal = 0;
         // Compare the transformations
         for(int j=0; j<size; j++){
