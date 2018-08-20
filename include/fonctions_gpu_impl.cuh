@@ -84,7 +84,7 @@ void compHash_gpu(Vector_cpugpu<int8_t>& words, Vector_gpu<T>& workSpace,
 		if(pass == div-1)
 			paquet = nb_words-paquetMax*pass;
 		if(paquet > 0){
-			// Grid an dblock configuration must adapt to the number of word to compute 
+			// Grid and block configuration must adapt to the number of word to compute 
 			// and to the size of the transformations.
 			// If the number of word to compute is low, transformations are spread through lots of threads.
 			// Where as if number of word to compute is high, transformations are spread trhough few threads.

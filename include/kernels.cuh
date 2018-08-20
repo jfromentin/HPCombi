@@ -86,8 +86,8 @@ __global__ void equal_kernel(const T* __restrict__ d_gen, const int8_t* __restri
 template <typename T>
 __global__ void compose_kernel(T* __restrict__ workSpace, const T* __restrict__ d_gen, const int8_t* __restrict__ d_words, 
                               const int size, const int nb_words, const int size_word, const int8_t nb_gen){
-  const int tidy = blockIdx.y*blockDim.y + threadIdx.y;
   const int tidx = blockIdx.x*blockDim.x + threadIdx.x;
+  const int tidy = blockIdx.y*blockDim.y + threadIdx.y;
   const int nb_threads = blockDim.x*gridDim.x;
   const int coefPerThread = (size + nb_threads-1) / nb_threads;
   const size_t offset = static_cast<size_t>(tidy) * size * nb_gen;
