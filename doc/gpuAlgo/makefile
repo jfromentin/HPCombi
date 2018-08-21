@@ -6,6 +6,12 @@
 # rendering quality set to theoretical limits and that all fonts should be
 # embedded. While typically overkill, the detriment to doing so is negligible.
 
+# Project Name : should be the name of the main .tex file.
+PROJECT = gpuAlgo
+
+# Generating engine : pdflatex, xelatex, etc..
+ENGINE = pdflatex
+
 # Targets:
 #    default : compiles the document to a PDF file using the defined
 #              latex generating engine. (pdflatex, xelatex, etc)
@@ -13,9 +19,6 @@
 #              (currently linux = evince, OSX = open)
 #    clean   : removes the obj/ directory holding temporary files
 
-PROJECT = gpuAlgo
-
-ENGINE = pdflatex
 
 default: obj/$(PROJECT).pdf
 
