@@ -97,10 +97,10 @@
  
 \newcommand{\annexe}[1]{%
 	\newpage
-	\refstepcounter{chapter}%
+	\refstepcounter{section}%
 	\phantomsection%
-	\addcontentsline{toc}{chapter}{\appendixname~{\thechapter}: #1}%
-	\chapter*{\appendixname~{\thechapter}: #1}
+	\addcontentsline{toc}{section}{\appendixname~{\thesection}: #1}%
+	\section*{\appendixname~{\thesection}: #1}
 	}
 
 \usepackage{algorithm}

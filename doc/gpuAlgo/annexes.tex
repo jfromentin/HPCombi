@@ -1,0 +1,119 @@
+\appendix
+
+\annexe{Principle of \glstext{gpu} computing}
+\label{principegpu}
+\subsection{Differences betwenn \glstext{gpu} and \glstext{cpu}}
+
+\autoref{archi} and \autoref{comp-cpu-gpu} show the main differences betwenn \glspl{cpu} and \glspl{gpu}. 
+A \gls{gpu} can contain up to several thousant \glspl{alu}, whereas \gls{cpu} contain a few dozens.
+The \gls{gpu} \gls{gm} (comparable to \gls{ram} memory on \glspl{cpu}) is on the same chip as the \glspl{alu}, thus alowing high bandwidth.
+\glspl{cpu} often operate at faster clock speeds than \glspl{gpu}.
+
+\begin{table}[H]
+\begin{multicols}{2}
+\begin{itemize}
+\item [\gls{cpu} :]
+\item \gls{cpu} cores : 2 to 72,
+\item \gls{ram} bandwidth : 8 to 540 Go/s,
+\item Clock frequency : 1~200 to 3~500 MHz.
+\end{itemize}
+\columnbreak
+\begin{itemize}
+\item [\gls{gpu} :]
+\item \glstext{cuda} cores : 250 to 5~120,
+\item \Gls{gm} bandwidth : 160 to 900 Go/s,
+\item Clock frequency : 745 to 1~480 MHz.
+\end{itemize}
+\end{multicols}
+\caption{Comparison of typical specifications of \glspl{cpu} and \glspl{gpu}}
+\label{comp-cpu-gpu}
+\end{table}
+
+
+\oneimage{archi}{Schematic of \gls{cpu} and \gls{gpu} architectures . \footnotesize{(source : \cite{doccuda})}}{archi}{0.7}
+
+\subsection{Programming on \glstext{gpu}}
+\label{partgpu}
+
+\gls{nvidia} \gls{gpu} are organized as follow \cite{doccuda} :
+\begin{enumerate}
+
+\item A \gls{gpu} is composed of several \gls{smx} (15 on \gls{k40}).
+
+\item A \gls{smx} executes several \glspl{th} \glspl{bloc}.
+The number of \glspl{th} \glspl{block} executed on a \gls{smx} is not directly available to the programmer.
+\Gls{shared} and register usage by the kernel are the two factor limiting the number of \glspl{block} executed on a \gls{smx}.
+On the Kepler architecture 65~536 registers and 48 Kbytes of \gls{shared} are available on a \gls{smx}.
+
+\item The L2 cache is common to all \gls{smx} and the L1 cache is common to all \glspl{th} within a \gls{smx}.
+
+\item A \glstext{cbloc} contains several \glspl{th} (up to 1~024).
+The \gls{block} size is set by the programmer in 3 dimensions. It is a parameters to optimize.
+\Gls{shared} is a memory bank shared over all threads from a \gls{block}.
+
+\item \Glspl{block} are organized in a 3 dimensions grid also set by the programmer. 
+\autoref{grid-block} illustrates the \glspl{th} organization in a grid of \glspl{block}.
+
+\item A \gls{warp} is a group of 32 \glspl{th} of a block.
+All \gls{th} in a \gls{warp} execute the same instructions according to the \gls{simt} protocol.
+
+\end{enumerate}
+\bigskip
+
+%Les \gls{gpu} sont utilisés en tant que \glspl{coproc}, c'est-à-dire que le code est exécuté par le \gls{cpu}, 
+%appelé \gls{host}, et ce dernier sous-traite les \glspl{kernel} aux \gls{gpu}. 
+%Le programmeur doit gérer les transferts de données du \gls{cpu} vers les \gls{gpu} et des \gls{gpu} vers le \gls{cpu}.
+
+\oneimage{gpu-grid-block}{Schematic of a grid of \glspl{bloc} \footnotesize{(source : \cite{doccuda})}}{grid-block}{1}
+
+%La gestion des accès aux différentes mémoires est cruciale : les mémoires distantes (\gls{ram} \gls{cpu} et \gls{mg} \gls{gpu}) sont les plus lentes. 
+%Le \autoref{tabdebitmemoire} donne les ordres de grandeur des débits des différentes mémoires.
+%Il faut donc utiliser le plus possible les mémoires locales (\glspl{reg} et \gls{shared}), en particulier en limitant les transferts \gls{cpu}-\gls{gpu}. 
+%Les accès à la \gls{mg} doivent se faire idéalement de manière contiguë, 
+%car les lectures cohérentes sont près de 20 fois plus rapides que les lectures aléatoires \cite{coursGPUonera}. 
+%Les accès à la \gls{mg} doivent également être recouverts par des calculs pour masquer les latences d'accès.
+
+%~ \begin{table}
+%~ \centering
+%~ \begin{tabular}{p{3cm}|>{\centering\arraybackslash}p{3cm}>{\centering\arraybackslash}p{3cm}>{\centering\arraybackslash}p{3cm}}
+%~ \hline
+%~ \gls{cpu}-\gls{gpu} & \Gls{mg} & \Gls{shared} & \Glspl{reg} \\
+%~ \hline
+%~ 10-150 Go/s & 160-900 Go/s & 1 To/s & 10 To/s \\
+%~ \hline
+%~ \end{tabular}
+%~ \caption{Ordres de grandeur des débits mémoires. }
+%~ \label{tabdebitmemoire}
+%~ \end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\annexe{Specifications of \glstext{gpu} and \glstext{cpu} used in this study}
+\label{spec}
+\centering
+\begin{tabular}{p{7cm}|>{\centering\arraybackslash}p{3.2cm}>{\centering\arraybackslash}p{3.2cm}}
+
+& \textbf{\gls{gpu} \glstext{k40}} \cite{dock40} & \textbf{2$\times$\gls{cpu} \glstext{e52620v2}} \cite{doce5v2}\\
+
+\hline
+Year & 2013 & 2012 \\
+
+Architecture & Kepler & Ivy Bridge \\
+\hline
+%~ \gls{cuda} Cores/\gls{cpu} Cores & 2880 & 2$\times$6 \\
+\gls{smx}/\gls{cpu} Cores & 15 & 2$\times$6 \\
+
+\gls{cpu} threads & X & 2$\times$12 \\
+
+\glstext{cuda} Cores & 2880 & X \\
+
+Frequency (GHz) & 0.74 & 2.1 \\
+\hline
+\Gls{gm}/\gls{ram} size (Go) & 12 & 64 \\
+
+\Gls{gm}/\gls{ram} max bandwidth (Go/s) & 288 & 51 \\
+\hline
+TDP (W) & 235 & 80 \\
+
+\end{tabular}
+

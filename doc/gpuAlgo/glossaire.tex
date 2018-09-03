@@ -1,9 +1,10 @@
 \newglossary[tlg]{noprint}{tld}{tdn}{NoPrint}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%CUDA/GPU
-\newglossaryentry{cpu}{ name=CPU, text=CPU, first=CPU (\emph{Central Processing Unit}), description={Central Processing Unit} }
-\newglossaryentry{gpu}{ name=GPU, text=GPU, first=GPU (\emph{Graphics Processing Unit}), description={Graphics Processing Unit} }
-\newglossaryentry{GPU}{ type=noprint, name=GPU, text=GPU, first=GPU (\emph{Graphics Processing Unit}), description={} }
+\newglossaryentry{cpu}{ name=CPU, text=CPU, first=CPU (\emph{Central Processing Unit}), firstplural=CPU (\emph{Central Processing Units}), plural=CPUs, description={Central Processing Unit} }
+\newglossaryentry{CPU}{ type=noprint, name=CPU, text=CPU, first=CPU (\emph{Central Processing Unit}), firstplural=CPU (\emph{Central Processing Units}), plural=CPUs, description={Central Processing Unit} }
+\newglossaryentry{gpu}{ name=GPU, text=GPU, first=GPU (\emph{Graphics Processing Unit}), firstplural=GPU (\emph{Graphics Processing Units}), plural=GPUs, description={Graphics Processing Unit} }
+\newglossaryentry{GPU}{ type=noprint, name=GPU, text=GPU, first=GPU (\emph{Graphics Processing Unit}), firstplural=GPU (\emph{Graphics Processing Units}), plural=GPUs, description={} }
 \newglossaryentry{cuda}{ name=CUDA, text=CUDA, first=CUDA (\emph{Compute Unified Device Architecture}), description={Compute Unified Device Architecture} }
 \newglossaryentry{api}{ name=API, text=API, first=\emph{Application Programming Interface} (API), description={Application Programming Interface} }
 \newglossaryentry{apicuda}{ name=\gls{api} \gls{cuda}, text=\gls{api} \gls{cuda}, first=\gls{api} \gls{cuda}, description={\gls{api} \gls{cuda}} }
@@ -17,10 +18,13 @@
 \newacronym{smx}{SMX}{\emph{Streaming Multiprocessor}}
 \newglossaryentry{kernel}{ name=kernel, text=kernel, first=noyau de calcul (kernel), description={noyau de calcul}, plural={kernels}, firstplural={Noyaux de calculs (kernels)} }
 \newglossaryentry{mg}{ name=mémoire globale, description={Mémoire globale \gls{gpu}} }
+\newglossaryentry{gm}{ name=global memory, description={\gls{gpu} Global Memory} }
 \newglossaryentry{reg}{ name=registre, description={Mémoire interne a un \gls{cpu}} }
-\newglossaryentry{shared}{ name=mémoire partagée, description={Mémoire partagée dans un \gls{bloc} de \glspl{th} d'un \gls{gpu}} }
+\newglossaryentry{sharedfr}{ name=mémoire partagée, description={Mémoire partagée dans un \gls{bloc} de \glspl{th} d'un \gls{gpu}} }
+\newglossaryentry{shared}{ name=shared memory, description=Shared memory within a \gls{gpu} \glspl{th} \gls{bloc}}
 \newglossaryentry{th}{ name=thread, plural=threads, description={Exécution d'un ensemble d'instructions} }
 \newglossaryentry{bloc}{ name=bloc, plural=blocs, description={Bloc de \glspl{th} d'un \gls{gpu}} }
+\newglossaryentry{block}{ name=block, plural=blocks, description={\gls{gpu} \glspl{th} block} }
 \newglossaryentry{cbloc}{ type=noprint, name=\glstext{cuda} block, plural=\glstext{cuda} blocks, description={} }
 \newglossaryentry{warp}{ name=warp, plural=warps, description={Ensemble de 32 \glspl{th} d'un \gls{gpu}} }
 \newglossaryentry{grid}{ name=grille, plural=grilles, description={Ensemble de \gls{bloc} d'un \gls{gpu}} }
@@ -65,7 +69,8 @@
 \newglossaryentry{pref}{ name=prefetching, description={Principe de programmation permettant de recouvrir les accès aux mémoires par des calculs} }
 \newglossaryentry{algo}{ type=noprint, name=algorithme, description={} }
 \newglossaryentry{mcdram}{ type=noprint, name=MCDRAM, text=MCDRAM, first=MCDRAM, description={} }
-\newglossaryentry{alu}{ name=ALU, text=ALU, first=\emph{unité arithmétique et logique} (ALU), description={Unité arithmétique et logique}, plural={ALU}, firstplural={\emph{unités arithmétiques et logiques} (ALU)} }
+\newglossaryentry{ual}{ name=ALU, text=ALU, first=\emph{unité arithmétique et logique} (ALU), description={Unité arithmétique et logique}, plural={ALU}, firstplural={\emph{unités arithmétiques et logiques} (ALU)} }
+\newglossaryentry{alu}{ name=ALU, text=ALU, first=\emph{arithmetic logic unit} (ALU), description={Arithmetic logic unit}, plural={ALUs}, firstplural={\emph{Arithmetic logic units} (ALU)} }
 \newglossaryentry{simt}{ name=SIMT, text=SIMT, first=SIMT (Single Instruction Multiple Threads) \cite{lindholm2008nvidia}, description={Single Instruction Multiple Threads} }
 \newglossaryentry{host}{ type=noprint, name=hôte, description={} }
 \newglossaryentry{coproc}{ type=noprint, name=coprocesseur, description={} }
