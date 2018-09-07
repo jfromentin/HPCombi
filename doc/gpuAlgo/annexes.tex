@@ -4,9 +4,9 @@
 \label{principegpu}
 \subsection{Differences betwenn \glstext{gpu} and \glstext{cpu}}
 
-\autoref{archi} and \autoref{comp-cpu-gpu} show the main differences betwenn \glspl{cpu} and \glspl{gpu}. 
-A \gls{gpu} can contain up to several thousant \glspl{alu}, whereas \gls{cpu} contain a few dozens.
-The \gls{gpu} \gls{gm} (comparable to \gls{ram} memory on \glspl{cpu}) is on the same chip as the \glspl{alu}, thus alowing high bandwidth.
+\autoref{archi} and \autoref{comp-cpu-gpu} show the main differences between \glspl{cpu} and \glspl{gpu}. 
+A \gls{gpu} can contain up to several thousand \glspl{alu}, whereas \gls{cpu} contain a few dozens.
+The \gls{gpu} \gls{gm} (comparable to \gls{ram} memory on \glspl{cpu}) is on the same chip as the \glspl{alu}, thus allowing high bandwidth.
 \glspl{cpu} often operate at faster clock speeds than \glspl{gpu}.
 
 \begin{table}[H]
@@ -35,7 +35,7 @@ The \gls{gpu} \gls{gm} (comparable to \gls{ram} memory on \glspl{cpu}) is on the
 \subsection{Programming on \glstext{gpu}}
 \label{partgpu}
 
-\gls{nvidia} \gls{gpu} are organized as follow \cite{doccuda} :
+\gls{nvidia} \gls{gpu} are organized as follows \cite{doccuda} :
 \begin{enumerate}
 
 \item A \gls{gpu} is composed of several \gls{smx} (15 on \gls{k40}).
@@ -48,7 +48,7 @@ On the Kepler architecture 65~536 registers and 48 Kbytes of \gls{shared} are av
 \item The L2 cache is common to all \gls{smx} and the L1 cache is common to all \glspl{th} within a \gls{smx}.
 
 \item A \glstext{cbloc} contains several \glspl{th} (up to 1~024).
-The \gls{block} size is set by the programmer in 3 dimensions. It is a parameters to optimize.
+The \gls{block} size is set by the programmer in 3 dimensions. It is a parameter to optimize.
 \Gls{shared} is a memory bank shared over all threads from a \gls{block}.
 
 \item \Glspl{block} are organized in a 3 dimensions grid also set by the programmer. 
@@ -96,7 +96,7 @@ All \gls{th} in a \gls{warp} execute the same instructions according to the \gls
 & \textbf{\gls{gpu} \glstext{k40}} \cite{dock40} & \textbf{2$\times$\gls{cpu} \glstext{e52620v2}} \cite{doce5v2}\\
 
 \hline
-Year & 2013 & 2012 \\
+Launch year & 2013 & 2012 \\
 
 Architecture & Kepler & Ivy Bridge \\
 \hline
